@@ -1,0 +1,5 @@
+.env
+src/ftl/*
+node_modules/
+dist/
+docs/

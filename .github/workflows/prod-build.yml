@@ -1,0 +1,47 @@
+name: Build and release
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        env:
+          RECAPTCHA_PROD: ${{ secrets.RECAPTCHA_PROD }}
+        run: npm run build:prod
+
+      - name: Commit dist to release branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check out (or create) the release branch without history
+          git fetch origin release 2>/dev/null || true
+          git checkout --orphan release-tmp
+          git rm -rf . --quiet
+
+          # Copy only the dist output
+          git checkout $GITHUB_SHA -- dist/
+
+          git add dist/
+          git commit -m "chore: build from ${GITHUB_SHA::7}"
+
+          git push origin release-tmp:release --force
