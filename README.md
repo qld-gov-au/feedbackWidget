@@ -9,7 +9,9 @@ src/
   html/     — Form markup (example.html)
   js/       — Form behaviour and submission logic (feedback.js)
 dist/       — Build output (feedback.min.html, feedback.min.js) — not committed
-tests/      — (empty — coming soon)
+tests/
+  fixture.html   — Minimal test page loading dist/feedback.min.js
+  smoke.spec.js  — Playwright smoke tests against the built JS
 ```
 
 ## Setup
@@ -32,7 +34,7 @@ RECAPTCHA_PROD=<your reCAPTCHA v3 prod site key>
 ### Install dependencies
 
 ```bash
-npm install
+npm ci
 ```
 
 ## Build
@@ -76,30 +78,30 @@ feedback-captcha=
 ## Email routing logic
 
 Email routing is managed via FreeMarker templates on the server and is not documented in this repository.
-
-For routing rules, franchise mappings, and URL patterns, refer to the internal Confluence page:
-**[placeholderlink]**
+For routing rules, franchise mappings, and URL patterns, refer to the internal Confluence page.
 
 ## GitHub Actions
 
-Two workflows automate the build and publish the `dist/` output to dedicated release branches. No manual build step is needed for normal deployments.
+Three caller workflows trigger a shared reusable workflow (`build.yml`) that handles all steps. No manual build step is needed for normal deployments.
 
 | Workflow | Trigger | Build command | Publishes to branch |
 |---|---|---|---|
-| `dev-build.yml` | Pull request to `development` | `npm run build:dev` | `release-staging` |
-| `prod-build.yml` | Pull request to `main` | `npm run build:prod` | `release` |
+| `dev-build.yml` | Pull request to `development` | `npm run build:dev` | `release-dev` |
+| `uat-build.yml` | Pull request to `uat` | `npm run build:dev` | `release-uat` |
+| `prod-build.yml` | Pull request to `main` | `npm run build:prod` | `release-production` |
 
 Each workflow:
 1. Checks out source on `ubuntu-latest` with Node 20
-2. Runs `npm install`
+2. Runs `npm ci`
 3. Builds using the appropriate reCAPTCHA key from repository secrets (`RECAPTCHA_DEV` or `RECAPTCHA_PROD`)
-4. Force-pushes only the `dist/` folder to the target release branch as an orphan commit
+4. Runs Playwright smoke tests against the built `dist/feedback.min.js`
+5. Force-pushes only the `dist/` folder to the target release branch as an orphan commit
 
 ### Required repository secrets
 
 | Secret | Used by |
 |---|---|
-| `RECAPTCHA_DEV` | `dev-build.yml` |
+| `RECAPTCHA_DEV` | `dev-build.yml`, `uat-build.yml` |
 | `RECAPTCHA_PROD` | `prod-build.yml` |
 
 Set these under **Settings → Secrets and variables → Actions** in the GitHub repository.

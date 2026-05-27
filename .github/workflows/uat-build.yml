@@ -1,14 +1,14 @@
-name: Prod build
+name: UAT build
 
 on:
   pull_request:
     branches:
-      - main
+      - uat
 
 jobs:
   build:
     uses: ./.github/workflows/build.yml
     with:
-      build_env: prod
-      release_branch: release-production
+      build_env: dev
+      release_branch: release-uat
     secrets: inherit

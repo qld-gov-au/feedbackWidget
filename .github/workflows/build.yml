@@ -1,0 +1,59 @@
+name: Build (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      build_env:
+        required: true
+        type: string
+        description: '"dev" or "prod"'
+      release_branch:
+        required: true
+        type: string
+        description: 'Target branch to push dist output to'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          RECAPTCHA_DEV: ${{ secrets.RECAPTCHA_DEV }}
+          RECAPTCHA_PROD: ${{ secrets.RECAPTCHA_PROD }}
+        run: npm run build:${{ inputs.build_env }}
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke tests
+        run: npm test
+
+      - name: Commit dist to release branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin ${{ inputs.release_branch }} 2>/dev/null || true
+          git checkout --orphan release-tmp
+          git rm -rf . --quiet
+
+          git checkout $GITHUB_SHA -- dist/
+
+          git add dist/
+          git commit -m "chore: build from ${GITHUB_SHA::7}"
+
+          git push origin release-tmp:${{ inputs.release_branch }} --force

@@ -2,4 +2,5 @@
 src/ftl/*
 node_modules/
 dist/
-docs/
+*/.DS_Store
+test-results/

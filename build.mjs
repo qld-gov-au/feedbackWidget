@@ -1,5 +1,12 @@
 import * as esbuild from 'esbuild';
-import { minify } from 'html-minifier-terser';
+function minifyHtml(html) {
+    return html
+        .replace(/<!--[\s\S]*?-->/g, '')           // remove comments
+        .replace(/^\s+|\s+$/gm, '')                // trim each line
+        .replace(/>\s+</g, '><')                   // collapse whitespace between tags
+        .replace(/\s{2,}/g, ' ')                   // collapse remaining runs of whitespace
+        .trim();
+}
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 
 const env = process.env.BUILD_ENV || 'dev';
@@ -41,12 +48,7 @@ console.log('Built: dist/feedback.min.js');
 const rawHtml = readFileSync('src/html/example.html', 'utf8')
     .replace('__BUILD_ENV__', env)
     .replace('__SMARTSERVICE_HOST__', smartserviceHost);
-const minifiedHtml = await minify(rawHtml, {
-    collapseWhitespace: true,
-    removeComments: true,
-    removeRedundantAttributes: true,
-    minifyCSS: true,
-});
+const minifiedHtml = minifyHtml(rawHtml);
 writeFileSync('dist/feedback.min.html', minifiedHtml);
 console.log('Built: dist/feedback.min.html');
 console.log('\nDone. Copy dist/feedback.min.js and dist/feedback.min.html into your CMS.');
