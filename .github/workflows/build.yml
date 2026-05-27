@@ -37,6 +37,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Skip the pull_request run when the source branch is feature-test — that
+    # branch uses the push trigger above so the two events don't double-up.
+    if: github.event_name == 'push' || github.head_ref != 'feature-test'
     permissions:
       contents: write
 
