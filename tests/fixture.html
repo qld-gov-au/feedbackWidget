@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Feedback Widget Test</title>
+</head>
+<body>
+
+  <!-- Stub grecaptcha before the widget script runs -->
+  <script>
+    window.grecaptcha = {
+      ready: function (cb) { cb(); },
+      execute: function () { return Promise.resolve('test-token'); }
+    };
+  </script>
+
+  <form action="https://test.smartservice.qld.gov.au/services/submissions/email/feedback/feedback-v4"
+    method="post" id="page-feedback-form">
+
+    <input type="hidden" name="data.page-title" id="data-page-title">
+    <input type="hidden" name="data.page-url" id="data-page-url">
+    <input type="hidden" name="data.page-referer" id="data-page-referer">
+    <input type="hidden" name="data.franchise" value="">
+    <input type="hidden" name="data.captchaCatch" value="dev">
+
+    <div style="display:none" aria-hidden="true">
+      <input type="text" name="data.captcha" tabindex="-1" autocomplete="off" value="">
+      <input type="text" name="feedback-captcha" tabindex="-1" autocomplete="off" value="">
+    </div>
+
+    <fieldset class="border-0 p-0 m-0">
+      <legend class="visually-hidden">Was this page helpful?</legend>
+
+      <div>
+        <span>Was this page helpful?</span>
+        <div>
+          <div>
+            <input type="radio" name="data.useful" id="feedback-useful-yes" value="yes" required>
+            <label for="feedback-useful-yes">Yes</label>
+          </div>
+          <div>
+            <input type="radio" name="data.useful" id="feedback-useful-no" value="no" required>
+            <label for="feedback-useful-no">No</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-feedback-details" hidden>
+        <label for="pageFeedbackComment" id="pageFeedbackCommentLabel">
+          What worked well for you (optional)
+        </label>
+        <span id="pageFeedbackComment-hint">Do not include any personal information.</span>
+        <textarea id="pageFeedbackComment" name="data.comments" rows="3"
+          aria-describedby="pageFeedbackComment-hint"></textarea>
+        <button type="submit" id="page-feedback-submit">Submit</button>
+      </div>
+    </fieldset>
+  </form>
+
+  <div id="page-feedback-success" hidden aria-live="polite">
+    Thank you for your feedback.
+  </div>
+
+  <div id="page-feedback-error" hidden aria-live="polite">
+    Sorry, your feedback could not be submitted right now.
+  </div>
+
+  <script src="../dist/feedback.min.js"></script>
+</body>
+</html>

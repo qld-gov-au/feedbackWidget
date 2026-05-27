@@ -1,0 +1,14 @@
+{
+  "name": "footer-feedback",
+  "version": "4.0.0",
+  "private": true,
+  "scripts": {
+    "build:dev": "BUILD_ENV=dev node --env-file=.env build.mjs",
+    "build:prod": "BUILD_ENV=prod node --env-file=.env build.mjs",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "esbuild": "^0.25.0"
+  }
+}
