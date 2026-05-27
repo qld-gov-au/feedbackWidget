@@ -1,16 +1,38 @@
-name: Build (reusable)
+name: Build and distribute
+
+# Runs when src/ or build config changes on any tracked environment branch.
+# Builds the feedback widget, runs smoke tests, then pushes the output to
+# the corresponding release branch (contains only the built output).
+#
+# Environment branches:
+#   feature-test → push → dev build  → release-dev
+#   development  → PR  → dev build  → release-dev
+#   uat          → PR  → dev build  → release-uat
+#   main         → PR  → prod build → release-production
+#
+# ── Team configuration ─────────────────────────────────────────────────────────
+# DIST_SOURCE  The folder whose contents are pushed to the release branch
+# ───────────────────────────────────────────────────────────────────────────────
 
 on:
-  workflow_call:
-    inputs:
-      build_env:
-        required: true
-        type: string
-        description: '"dev" or "prod"'
-      release_branch:
-        required: true
-        type: string
-        description: 'Target branch to push dist output to'
+  push:
+    branches:
+      - feature-test
+    paths:
+      - 'src/**'
+      - 'build.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches:
+      - development
+      - uat
+      - main
+    paths:
+      - 'src/**'
+      - 'build.mjs'
+      - 'package.json'
+      - 'package-lock.json'
 
 jobs:
   build:
@@ -18,16 +40,35 @@ jobs:
     permissions:
       contents: write
 
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+    env:
+      DIST_SOURCE: dist
 
-      - name: Set up Node
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required for worktree to access remote branches
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: package.json
+          cache-dependency-path: package-lock.json
+
+      - name: Resolve environment config
+        id: config
+        run: |
+          # On pull_request events use the target branch; on push use the source branch
+          REF="${{ github.base_ref || github.ref_name }}"
+          case "$REF" in
+            main) echo "build_env=prod"  >> "$GITHUB_OUTPUT"
+                  echo "release_branch=release-production" >> "$GITHUB_OUTPUT" ;;
+            uat)  echo "build_env=dev"   >> "$GITHUB_OUTPUT"
+                  echo "release_branch=release-uat" >> "$GITHUB_OUTPUT" ;;
+            *)    echo "build_env=dev"   >> "$GITHUB_OUTPUT"
+                  echo "release_branch=release-dev" >> "$GITHUB_OUTPUT" ;;
+          esac
 
       - name: Install dependencies
         run: npm install
@@ -38,10 +79,7 @@ jobs:
           echo "RECAPTCHA_PROD=${{ secrets.RECAPTCHA_PROD }}" >> .env
 
       - name: Build
-        env:
-          RECAPTCHA_DEV: ${{ secrets.RECAPTCHA_DEV }}
-          RECAPTCHA_PROD: ${{ secrets.RECAPTCHA_PROD }}
-        run: npm run build:${{ inputs.build_env }}
+        run: npm run build:${{ steps.config.outputs.build_env }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -61,16 +99,33 @@ jobs:
       - name: Run smoke tests
         run: npm test
 
-      - name: Commit dist to release branch
+      - name: Push dist to ${{ steps.config.outputs.release_branch }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git fetch origin ${{ inputs.release_branch }} 2>/dev/null || true
-          git checkout --orphan release-tmp
-          git rm -rf . --quiet
+          RELEASE_BRANCH="${{ steps.config.outputs.release_branch }}"
 
-          git add -f dist/
-          git commit -m "chore: build from ${GITHUB_SHA::7}"
+          # Set up a worktree for the release branch.
+          # Creates an orphan branch on first run; checks it out on subsequent runs.
+          if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH" > /dev/null 2>&1; then
+            git fetch origin "$RELEASE_BRANCH"
+            git worktree add /tmp/dist "$RELEASE_BRANCH"
+          else
+            git worktree add --orphan -b "$RELEASE_BRANCH" /tmp/dist
+          fi
 
-          git push origin release-tmp:${{ inputs.release_branch }} --force
+          # Replace the release branch contents with the current build output
+          rm -rf /tmp/dist/*
+          cp -r "${{ env.DIST_SOURCE }}/." /tmp/dist/
+
+          cd /tmp/dist
+          git add --all
+
+          if git diff --cached --quiet; then
+            echo "::notice::No changes to dist — skipping commit."
+            exit 0
+          fi
+
+          git commit -m "dist(${{ github.ref_name }}): ${{ github.sha }}"
+          git push origin "$RELEASE_BRANCH"

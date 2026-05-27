@@ -18,7 +18,7 @@ tests/
 
 ### Prerequisites
 
-- Node.js (any current LTS)
+- Node.js 24 or later
 - A `.env` file at the project root (copy from `.env.sample`)
 
 ### Environment variables
@@ -34,7 +34,7 @@ RECAPTCHA_PROD=<your reCAPTCHA v3 prod site key>
 ### Install dependencies
 
 ```bash
-npm ci
+npm install
 ```
 
 ## Build
@@ -82,27 +82,38 @@ For routing rules, franchise mappings, and URL patterns, refer to the internal C
 
 ## GitHub Actions
 
-Three caller workflows trigger a shared reusable workflow (`build.yml`) that handles all steps. No manual build step is needed for normal deployments.
+A single workflow (`build.yml`) handles all environments. It derives the build target and release branch automatically from the triggering branch.
 
-| Workflow | Trigger | Build command | Publishes to branch |
+| Trigger | Branch | Build command | Publishes to |
 |---|---|---|---|
-| `dev-build.yml` | Pull request to `development` | `npm run build:dev` | `release-dev` |
-| `uat-build.yml` | Pull request to `uat` | `npm run build:dev` | `release-uat` |
-| `prod-build.yml` | Pull request to `main` | `npm run build:prod` | `release-production` |
+| Push | `feature-test` | `npm run build:dev` | `release-dev` |
+| Pull request → `development` | any | `npm run build:dev` | `release-dev` |
+| Pull request → `uat` | any | `npm run build:dev` | `release-uat` |
+| Pull request → `main` | any | `npm run build:prod` | `release-production` |
 
-Each workflow:
-1. Checks out source on `ubuntu-latest` with Node 20
-2. Runs `npm ci`
+The workflow only runs when `src/`, `build.mjs`, `package.json`, or `package-lock.json` change.
+
+Each run:
+1. Checks out source on `ubuntu-latest` with Node 24
+2. Runs `npm install`
 3. Builds using the appropriate reCAPTCHA key from repository secrets (`RECAPTCHA_DEV` or `RECAPTCHA_PROD`)
 4. Runs Playwright smoke tests against the built `dist/feedback.min.js`
-5. Force-pushes only the `dist/` folder to the target release branch as an orphan commit
+5. Pushes only the `dist/` folder to the target release branch via a git worktree (skips the commit if nothing changed)
+
+### Triggering a dev rebuild without a pull request
+
+Push any relevant change to the `feature-test` branch. This triggers the workflow immediately and publishes to `release-dev` — no PR required. Use this for iterating on the widget during development before the work is ready to propose against `development`.
+
+```bash
+git push origin feature-test
+```
 
 ### Required repository secrets
 
 | Secret | Used by |
 |---|---|
-| `RECAPTCHA_DEV` | `dev-build.yml`, `uat-build.yml` |
-| `RECAPTCHA_PROD` | `prod-build.yml` |
+| `RECAPTCHA_DEV` | dev and UAT builds |
+| `RECAPTCHA_PROD` | production build |
 
 Set these under **Settings → Secrets and variables → Actions** in the GitHub repository.
 
