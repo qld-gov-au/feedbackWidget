@@ -86,8 +86,8 @@ Two workflows automate the build and publish the `dist/` output to dedicated rel
 
 | Workflow | Trigger | Build command | Publishes to branch |
 |---|---|---|---|
-| `dev-build.yml` | Push to `development` | `npm run build:dev` | `release-staging` |
-| `prod-build.yml` | Push to `main` | `npm run build:prod` | `release` |
+| `dev-build.yml` | Pull request to `development` | `npm run build:dev` | `release-staging` |
+| `prod-build.yml` | Pull request to `main` | `npm run build:prod` | `release` |
 
 Each workflow:
 1. Checks out source on `ubuntu-latest` with Node 20
