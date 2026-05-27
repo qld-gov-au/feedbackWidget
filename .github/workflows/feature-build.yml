@@ -1,0 +1,14 @@
+name: Feature build example (for testing)
+
+on:
+  push:
+    branches:
+      - feature-test
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      build_env: dev
+      release_branch: release-dev
+    secrets: inherit
