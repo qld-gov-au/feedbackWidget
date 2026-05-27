@@ -31,7 +31,7 @@ mkdirSync('dist', { recursive: true });
 
 // --- JS: bundle + minify, replace process.env.RECAPTCHA with the literal key ---
 await esbuild.build({
-    entryPoints: ['src/js/example.js'],
+    entryPoints: ['src/js/feedback.js'],
     outfile: 'dist/feedback.min.js',
     bundle: false,
     minify: true,
