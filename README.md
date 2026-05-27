@@ -6,7 +6,7 @@ A lightweight page feedback component for Queensland Government websites. Collec
 
 ```
 src/
-  html/     — Form markup (example.html)
+  html/     — Form markup (index.html)
   js/       — Form behaviour and submission logic (feedback.js)
 dist/       — Build output (feedback.min.html, feedback.min.js) — not committed
 tests/

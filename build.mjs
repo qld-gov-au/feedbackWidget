@@ -45,7 +45,7 @@ await esbuild.build({
 console.log('Built: dist/feedback.min.js');
 
 // --- HTML: minify + inject BUILD_ENV into captchaCatch ---
-const rawHtml = readFileSync('src/html/example.html', 'utf8')
+const rawHtml = readFileSync('src/html/index.html', 'utf8')
     .replace('__BUILD_ENV__', env)
     .replace('__SMARTSERVICE_HOST__', smartserviceHost);
 const minifiedHtml = minifyHtml(rawHtml);
