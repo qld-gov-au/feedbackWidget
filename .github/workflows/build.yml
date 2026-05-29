@@ -32,8 +32,6 @@ on:
     paths:
       - 'src/**'
       - 'build.mjs'
-      - 'package.json'
-      - 'package-lock.json'
 
 jobs:
   build:
