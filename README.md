@@ -10,8 +10,7 @@ src/
   js/       — Form behaviour and submission logic (feedback.js)
 dist/       — Build output (feedback.min.html, feedback.min.js) — not committed
 tests/
-  fixture.html   — Minimal test page loading dist/feedback.min.js
-  smoke.spec.js  — Playwright smoke tests against the built JS
+  smoke.spec.js  — Playwright smoke tests against src/html/index.html + built JS
 ```
 
 ## Setup
@@ -57,6 +56,17 @@ Copy these two files into your CMS.
 3. The JS wraps all fields under a `data[...]` parent and posts to the Smart Service submissions endpoint as `application/json`
 4. The FreeMarker template on the server reads the submitted fields, checks for spam, and routes the email to the appropriate team based on URL, referrer, or franchise
 
+## Smoke Tests
+
+It covers:
+1. Hidden-field population on load
+2. Yes/No label and details toggling
+3. Hidden success and error states before submission
+4. A live success submission with payload checks for page metadata, franchise, browser name, OS, captcha environment, and the feedback prefix
+5. A forced 500 response that verifies the error banner text is shown
+
+The shared test data and payload helpers live in `tests/.smoke-meta.js` so the spec itself stays focused on the assertions.
+
 ## JavaScript (`src/js/feedback.js`)
 
 The script is wrapped in an IIFE and has no external dependencies beyond the Google reCAPTCHA v3 API. On load it writes `document.title`, `window.location.href`, and `document.referrer` into the form's hidden fields. The reCAPTCHA script is lazy-loaded the first time the user interacts with a Yes/No radio button, avoiding an unnecessary network request on pages where the form is never used. When a radio is selected the comment section is revealed and the comment label updates dynamically to match the chosen sentiment ("What worked well for you" vs "What didn't work for you"). On submit the script validates the form natively via `checkValidity()`, disables the submit button to prevent double-submission, then calls `grecaptcha.execute()` to obtain a token. That token is appended to a `FormData` object and the whole payload is sent via `fetch`. A successful `2xx` response hides the form and shows the success message; any network or HTTP error re-enables the submit button and reveals the error message. The `process.env.RECAPTCHA` and `process.env.BUILD_ENV` references are replaced with literal values at build time by esbuild, so no environment variables are present in the deployed output.
@@ -97,7 +107,7 @@ Each run:
 1. Checks out source on `ubuntu-latest` with Node 24
 2. Runs `npm install`
 3. Builds using the appropriate reCAPTCHA key from repository secrets (`RECAPTCHA_DEV` or `RECAPTCHA_PROD`)
-4. Runs Playwright smoke tests against the built `dist/feedback.min.js`
+4. Runs Playwright smoke tests against the source HTML fragment in `src/html/index.html` with the built `dist/feedback.min.js`, including a live success path and a forced failure-path assertion
 5. Pushes only the `dist/` folder to the target release branch via a git worktree (skips the commit if nothing changed)
 
 ### Triggering a dev rebuild without a pull request

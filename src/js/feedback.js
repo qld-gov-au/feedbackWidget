@@ -135,13 +135,11 @@
                             if (!response.ok) {
                                 throw new Error('Submission failed with status ' + response.status);
                             }
-
                             form.hidden = true;
                             success.hidden = false;
                         })
                         .catch(function (err) {
                             console.error('Feedback form submission error:', err);
-
                             form.hidden = true;
                             error.hidden = false;
                             error.removeAttribute('hidden');
@@ -149,7 +147,6 @@
                 })
                 .catch(function (err) {
                     console.error('reCAPTCHA error:', err);
-
                     form.hidden = true;
                     error.hidden = false;
                     error.removeAttribute('hidden');

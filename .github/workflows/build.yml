@@ -5,7 +5,7 @@ name: Build and distribute
 # the corresponding release branch (contains only the built output).
 #
 # Environment branches:
-#   feature-test → push → dev build  → release-dev
+#   feature-test → push → dev build → release-dev
 #   development  → PR  → dev build  → release-dev
 #   uat          → PR  → dev build  → release-uat
 #   main         → PR  → prod build → release-production
