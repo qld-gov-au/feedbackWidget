@@ -1,4 +1,4 @@
-# Footer Feedback Widget
+# Footer feedback widget
 
 A lightweight page feedback component for Queensland Government websites. Collects a yes/no helpfulness response and optional comments, then submits to the Smart Service QLD feedback endpoint.
 

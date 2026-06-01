@@ -20,6 +20,7 @@ on:
       - feature-test
     paths:
       - 'src/**'
+      - 'tests/**'
       - 'build.mjs'
       - 'package.json'
       - 'package-lock.json'
@@ -32,8 +33,6 @@ on:
     paths:
       - 'src/**'
       - 'build.mjs'
-      - 'package.json'
-      - 'package-lock.json'
 
 jobs:
   build:

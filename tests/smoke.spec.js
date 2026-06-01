@@ -13,6 +13,10 @@ const { smokeData, getRunnerIp, getSubmissionFeedback } = require('./.smoke-meta
 const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.html'), 'utf8');
 const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
 
+function getExpectedOS() {
+  return process.env.GITHUB_ACTIONS === 'true' ? 'Linux' : 'Mac OS';
+}
+
 function renderTestDocument() {
   // Render the source fragment inside a minimal document so the widget runs
   // with the same markup as production, but with controlled test values.
@@ -152,7 +156,7 @@ test('submits feedback to the test endpoint and shows success', async ({ page })
   expect(payload.data['franchise']).toBe(smokeData.franchise);
   expect(payload.data.useful).toBe(smokeData.useful);
   expect(payload.data.browserName.name).toBe('Chrome');
-  expect(payload.data.OS).toBe('Mac OS');
+  expect(payload.data.OS).toBe(getExpectedOS());
   expect(payload.data.comments).toContain(smokeData.feedbackPrefix);
   expect(payload.data.captchaCatch).toBe('dev');
 
