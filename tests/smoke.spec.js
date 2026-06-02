@@ -13,7 +13,7 @@ const { smokeData, getRunnerIp, getSubmissionFeedback } = require('./.smoke-meta
 const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.html'), 'utf8');
 const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
 const useRealRecaptcha = process.env.SMOKE_USE_REAL_RECAPTCHA === 'true';
-const realRecaptchaSiteKey = process.env.RECAPTCHA_DEV || '';
+const realRecaptchaSiteKey = process.env.SMOKE_RECAPTCHA_SITE_KEY || process.env.RECAPTCHA_DEV || '';
 
 function logPayload(label, payload) {
   console.log(`\n[smoke] ${label} payload:`);
