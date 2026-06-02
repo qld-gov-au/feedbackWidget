@@ -12,6 +12,13 @@ const { smokeData, getRunnerIp, getSubmissionFeedback } = require('./.smoke-meta
 
 const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.html'), 'utf8');
 const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
+const useRealRecaptcha = process.env.SMOKE_USE_REAL_RECAPTCHA === 'true';
+const realRecaptchaSiteKey = process.env.RECAPTCHA_DEV || '';
+
+function logPayload(label, payload) {
+  console.log(`\n[smoke] ${label} payload:`);
+  console.log(JSON.stringify(payload, null, 2));
+}
 
 function getExpectedOS() {
   return process.env.GITHUB_ACTIONS === 'true' ? 'Linux' : 'Mac OS';
@@ -51,16 +58,33 @@ async function loadWidget(page) {
     waitUntil: 'domcontentloaded',
     referer: smokeData.referrer
   });
-  await page.evaluate(() => {
-    window.grecaptcha = {
-      ready(cb) {
-        cb();
-      },
-      execute() {
-        return Promise.resolve('test-token');
-      }
-    };
-  });
+
+  if (useRealRecaptcha) {
+    if (!realRecaptchaSiteKey) {
+      throw new Error('SMOKE_RECAPTCHA_SITE_KEY is required when SMOKE_USE_REAL_RECAPTCHA=true');
+    }
+
+    await page.addScriptTag({
+      url: 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(realRecaptchaSiteKey)
+    });
+    await page.waitForFunction(() => {
+      return Boolean(window.grecaptcha)
+        && typeof window.grecaptcha.ready === 'function'
+        && typeof window.grecaptcha.execute === 'function';
+    });
+  } else {
+    await page.evaluate(() => {
+      window.grecaptcha = {
+        ready(cb) {
+          cb();
+        },
+        execute() {
+          return Promise.resolve('test-token');
+        }
+      };
+    });
+  }
+
   await page.addScriptTag({ path: builtScriptPath });
 }
 
@@ -126,7 +150,9 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   });
 
   await page.click('#page-feedback-submit');
-  await requestPromise;
+  const request = await requestPromise;
+  const payload = JSON.parse(request.postData());
+  logPayload('failure-path', payload);
 
   await expect(page.locator('#page-feedback-form')).toBeHidden();
   await expect(page.locator('#page-feedback-success')).toBeHidden();

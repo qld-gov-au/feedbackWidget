@@ -46,6 +46,7 @@ jobs:
     env:
       DIST_SOURCE: dist
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      SMOKE_USE_REAL_RECAPTCHA: 'true'
 
     steps:
       - name: Checkout repository
@@ -93,7 +94,13 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Show smoke mode
+        run: echo "SMOKE_USE_REAL_RECAPTCHA=${SMOKE_USE_REAL_RECAPTCHA}"
+
       - name: Run smoke tests
+        env:
+          SMOKE_USE_REAL_RECAPTCHA: ${{ env.SMOKE_USE_REAL_RECAPTCHA }}
+          SMOKE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_DEV }}
         run: npm test
 
       - name: Push dist to ${{ steps.config.outputs.release_branch }}
