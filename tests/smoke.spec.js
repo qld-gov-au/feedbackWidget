@@ -152,7 +152,6 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   await page.click('#page-feedback-submit');
   const request = await requestPromise;
   const payload = JSON.parse(request.postData());
-  logPayload('failure-path', payload);
 
   await expect(page.locator('#page-feedback-form')).toBeHidden();
   await expect(page.locator('#page-feedback-success')).toBeHidden();
