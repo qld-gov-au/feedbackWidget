@@ -66,7 +66,7 @@ It covers:
 4. A live success submission with payload checks for page metadata, franchise, browser name, OS, captcha environment, and the feedback prefix
 5. A forced 500 response that verifies the error banner text is shown
 
-The shared test data and payload helpers live in `tests/.smoke-meta.js` so the spec itself stays focused on the assertions.
+The shared smoke helpers now live in `tests/utils/common.js` so the spec itself stays focused on the assertions.
 
 ### Optional: use real reCAPTCHA tokens in smoke tests
 

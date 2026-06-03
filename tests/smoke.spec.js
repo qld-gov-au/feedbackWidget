@@ -8,122 +8,23 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('@playwright/test');
-const { smokeData, getRunnerIp, getSubmissionFeedback } = require('./.smoke-meta');
+const { smokeData, getRunnerIp, getSubmissionFeedback, getExpectedOS, logPayload, loadWidget } = require('./utils/common');
 
 const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.html'), 'utf8');
 const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
 const useRealRecaptcha = process.env.SMOKE_USE_REAL_RECAPTCHA === 'true';
 const realRecaptchaSiteKey = process.env.SMOKE_RECAPTCHA_SITE_KEY || process.env.RECAPTCHA_DEV || '';
-
-function logPayload(label, payload) {
-  console.log(`\n[smoke] ${label} payload:`);
-  console.log(JSON.stringify(payload, null, 2));
-}
-
-function getExpectedOS() {
-  return process.env.GITHUB_ACTIONS === 'true' ? 'Linux' : 'Mac OS';
-}
-
-function renderTestDocument() {
-  // Render the source fragment inside a minimal document so the widget runs
-  // with the same markup as production, but with controlled test values.
-  const html = sourceHtml
-    .replace('__BUILD_ENV__', 'dev')
-    .replace('__SMARTSERVICE_HOST__', 'test.smartservice.qld.gov.au')
-    .replace('name="data.franchise" value=""', `name="data.franchise" value="${smokeData.franchise}"`);
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>${smokeData.pageTitle}</title>
-   <link rel="stylesheet" href="https://static.qgov.net.au/qgds-bootstrap5/v2/v2.x.x-latest/assets/css/qld.bootstrap.css"/>
-</head>
-<body>
-${html}
-</body>
-</html>`;
-}
-
-async function loadWidget(page, options) {
-  const opts = options || {};
-
-  // Navigate to the GitHub URL we want to simulate, then inject the built JS
-  // bundle so the page behaves like a real hosted widget.
-  await page.route(smokeData.pageUrl, async route => {
-    await route.fulfill({
-      contentType: 'text/html',
-      body: renderTestDocument()
-    });
-  });
-
-  await page.goto(smokeData.pageUrl, {
-    waitUntil: 'domcontentloaded',
-    referer: smokeData.referrer
-  });
-
-  // Mode A: use real Google reCAPTCHA for integration-style smoke runs.
-  if (useRealRecaptcha) {
-    if (!realRecaptchaSiteKey) {
-      throw new Error('SMOKE_RECAPTCHA_SITE_KEY is required when SMOKE_USE_REAL_RECAPTCHA=true');
-    }
-
-    await page.addScriptTag({
-      url: 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(realRecaptchaSiteKey)
-    });
-    await page.waitForFunction(() => {
-      return Boolean(window.grecaptcha)
-        && typeof window.grecaptcha.ready === 'function'
-        && typeof window.grecaptcha.execute === 'function';
-    });
-  } else if (opts.simulateDelayedRecaptchaLoad) {
-    // Mode B: emulate slow third-party script availability to regression-test
-    // the submit flow's wait-for-load behavior.
-    await page.evaluate(() => {
-      const originalAppendChild = document.head.appendChild.bind(document.head);
-      document.head.appendChild = function (node) {
-        if (node && node.tagName === 'SCRIPT' && /google\.com\/recaptcha\/api\.js/.test(node.src || '')) {
-          // Delay script readiness and manually fire onload the way the browser would.
-          setTimeout(function () {
-            window.grecaptcha = {
-              ready(cb) {
-                cb();
-              },
-              execute() {
-                return Promise.resolve('delayed-test-token');
-              }
-            };
-
-            if (typeof node.onload === 'function') {
-              node.onload();
-            }
-          }, 120);
-          return node;
-        }
-
-        return originalAppendChild(node);
-      };
-    });
-  } else {
-    // Mode C (default): deterministic local smoke mode with mocked token.
-    await page.evaluate(() => {
-      window.grecaptcha = {
-        ready(cb) {
-          cb();
-        },
-        execute() {
-          return Promise.resolve('test-token');
-        }
-      };
-    });
-  }
-
-  await page.addScriptTag({ path: builtScriptPath });
-}
+const widgetOptions = {
+  builtScriptPath,
+  realRecaptchaSiteKey,
+  smokeData,
+  sourceHtml,
+  useRealRecaptcha,
+};
 
 test('page title and URL are injected into hidden fields on load', async ({ page }) => {
   // Smoke check: the widget should write page metadata into its hidden fields.
-  await loadWidget(page);
+  await loadWidget(page, widgetOptions);
   const title = await page.inputValue('#data-page-title');
   const url = await page.inputValue('#data-page-url');
   expect(title).toBe(smokeData.pageTitle);
@@ -132,13 +33,13 @@ test('page title and URL are injected into hidden fields on load', async ({ page
 
 test('details section is hidden before any radio is selected', async ({ page }) => {
   // Default state: the comment area should stay hidden until the user chooses yes/no.
-  await loadWidget(page);
+  await loadWidget(page, widgetOptions);
   await expect(page.locator('#page-feedback-details')).toBeHidden();
 });
 
 test('selecting Yes reveals details with correct label', async ({ page }) => {
   // Choice handling: yes should reveal the details area and keep the positive label.
-  await loadWidget(page);
+  await loadWidget(page, widgetOptions);
   await page.click('#feedback-useful-yes');
   await expect(page.locator('#page-feedback-details')).toBeVisible();
   await expect(page.locator('#pageFeedbackCommentLabel')).toContainText('What worked well for you');
@@ -146,7 +47,7 @@ test('selecting Yes reveals details with correct label', async ({ page }) => {
 
 test('selecting No reveals details with correct label', async ({ page }) => {
   // Choice handling: no should reveal the details area and switch to the negative label.
-  await loadWidget(page);
+  await loadWidget(page, widgetOptions);
   await page.click('#feedback-useful-no');
   await expect(page.locator('#page-feedback-details')).toBeVisible();
   await expect(page.locator('#pageFeedbackCommentLabel')).toContainText('What didn');
@@ -154,7 +55,7 @@ test('selecting No reveals details with correct label', async ({ page }) => {
 
 test('success and error banners are hidden on initial load', async ({ page }) => {
   // Status banners must stay hidden until a submission outcome is known.
-  await loadWidget(page);
+  await loadWidget(page, widgetOptions);
   await expect(page.locator('#page-feedback-success')).toBeHidden();
   await expect(page.locator('#page-feedback-error')).toBeHidden();
 });
@@ -162,7 +63,7 @@ test('success and error banners are hidden on initial load', async ({ page }) =>
 test('failed feedback submission shows the error banner', async ({ page }) => {
   // Failure-path smoke check: mock the submit endpoint to return an error and
   // confirm the widget hides the form and surfaces the error state.
-  await loadWidget(page);
+  await loadWidget(page, widgetOptions);
   await page.route('**/services/submissions/email/feedback/feedback-v4', async route => {
     await route.fulfill({
       status: 500,
@@ -187,6 +88,7 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   await page.click('#page-feedback-submit');
   const request = await requestPromise;
   const payload = JSON.parse(request.postData());
+  logPayload('failed submission', payload);
 
   await expect(page.locator('#page-feedback-form')).toBeHidden();
   await expect(page.locator('#page-feedback-success')).toBeHidden();
@@ -196,7 +98,7 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
 test('submits feedback to the test endpoint and shows success', async ({ page }) => {
   // End-to-end smoke check: submit a real payload, capture the request body,
   // and verify the important fields plus the success UI state.
-  await loadWidget(page);
+  await loadWidget(page, widgetOptions);
   await page.click('#feedback-useful-yes');
   await expect(page.locator('#page-feedback-details')).toBeVisible();
   const runnerIp = await getRunnerIp();
@@ -210,6 +112,7 @@ test('submits feedback to the test endpoint and shows success', async ({ page })
 
   const request = await requestPromise;
   const payload = JSON.parse(request.postData());
+  logPayload('successful submission', payload);
 
   expect(payload.data['page-title']).toBe(smokeData.pageTitle);
   expect(payload.data['page-url']).toBe(smokeData.pageUrl);
@@ -231,7 +134,10 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
 
   // Regression guard for the grecaptcha undefined race:
   // submit should wait for the script-load promise before execute.
-  await loadWidget(page, { simulateDelayedRecaptchaLoad: true });
+  await loadWidget(page, {
+    ...widgetOptions,
+    simulateDelayedRecaptchaLoad: true,
+  });
   await page.route('**/services/submissions/email/feedback/feedback-v4', async route => {
     await route.fulfill({
       status: 200,
@@ -249,6 +155,7 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
   await page.click('#page-feedback-submit');
   const request = await requestPromise;
   const payload = JSON.parse(request.postData());
+  logPayload('delayed recaptcha submission', payload);
 
   expect(payload.data.captcha.token).toBe('delayed-test-token');
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
