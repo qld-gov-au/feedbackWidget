@@ -37,6 +37,7 @@ function renderTestDocument() {
 <head>
   <meta charset="UTF-8">
   <title>${smokeData.pageTitle}</title>
+   <link rel="stylesheet" href="https://static.qgov.net.au/qgds-bootstrap5/v2/v2.x.x-latest/assets/css/qld.bootstrap.css"/>
 </head>
 <body>
 ${html}
@@ -45,6 +46,7 @@ ${html}
 }
 
 async function loadWidget(page) {
+
   // Navigate to the GitHub URL we want to simulate, then inject the built JS
   // bundle so the page behaves like a real hosted widget.
   await page.route(smokeData.pageUrl, async route => {

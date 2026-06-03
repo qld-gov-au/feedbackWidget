@@ -47,7 +47,7 @@ jobs:
       DIST_SOURCE: dist
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       SMOKE_USE_REAL_RECAPTCHA: 'true'
-
+      PLAYWRIGHT_HEADLESS: 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -95,12 +95,15 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Show smoke mode
-        run: echo "SMOKE_USE_REAL_RECAPTCHA=${SMOKE_USE_REAL_RECAPTCHA}"
+        run: |
+          echo "SMOKE_USE_REAL_RECAPTCHA=${SMOKE_USE_REAL_RECAPTCHA}"
+          echo "PLAYWRIGHT_HEADLESS=${PLAYWRIGHT_HEADLESS}"
 
       - name: Run smoke tests
         env:
           SMOKE_USE_REAL_RECAPTCHA: ${{ env.SMOKE_USE_REAL_RECAPTCHA }}
           SMOKE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_DEV }}
+          PLAYWRIGHT_HEADLESS: ${{ env.PLAYWRIGHT_HEADLESS }}
         run: npm test
 
       - name: Push dist to ${{ steps.config.outputs.release_branch }}

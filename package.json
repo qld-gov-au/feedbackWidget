@@ -5,7 +5,7 @@
   "scripts": {
     "build:dev": "BUILD_ENV=dev node --env-file=.env build.mjs",
     "build:prod": "BUILD_ENV=prod node --env-file=.env build.mjs",
-    "test": "playwright test"
+    "test": "node --env-file=.env ./node_modules/.bin/playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",

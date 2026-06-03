@@ -26,6 +26,7 @@ tests/
 # .env
 RECAPTCHA_DEV=<your reCAPTCHA v3 dev site key>
 RECAPTCHA_PROD=<your reCAPTCHA v3 prod site key>
+PLAYWRIGHT_HEADLESS=true
 ```
 
 > The `.env.sample` file lists all required keys. Never commit real keys.
@@ -89,6 +90,15 @@ Example GitHub Actions step:
     SMOKE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_DEV }}
   run: npm test
 ```
+
+### Playwright headless mode
+
+Playwright headless mode is controlled by `PLAYWRIGHT_HEADLESS` in `playwright.config.js`.
+
+- Local default (`.env`): `PLAYWRIGHT_HEADLESS=true`
+- Hosted/CI setting (`.github/workflows/build.yml`): `PLAYWRIGHT_HEADLESS=true`
+
+CI is intentionally always headless. Use local `.env` values when you want headed debugging.
 
 ## JavaScript (`src/js/feedback.js`)
 
