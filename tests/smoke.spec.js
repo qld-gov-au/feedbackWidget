@@ -45,7 +45,8 @@ ${html}
 </html>`;
 }
 
-async function loadWidget(page) {
+async function loadWidget(page, options) {
+  const opts = options || {};
 
   // Navigate to the GitHub URL we want to simulate, then inject the built JS
   // bundle so the page behaves like a real hosted widget.
@@ -73,6 +74,31 @@ async function loadWidget(page) {
       return Boolean(window.grecaptcha)
         && typeof window.grecaptcha.ready === 'function'
         && typeof window.grecaptcha.execute === 'function';
+    });
+  } else if (opts.simulateDelayedRecaptchaLoad) {
+    await page.evaluate(() => {
+      const originalAppendChild = document.head.appendChild.bind(document.head);
+      document.head.appendChild = function (node) {
+        if (node && node.tagName === 'SCRIPT' && /google\.com\/recaptcha\/api\.js/.test(node.src || '')) {
+          setTimeout(function () {
+            window.grecaptcha = {
+              ready(cb) {
+                cb();
+              },
+              execute() {
+                return Promise.resolve('delayed-test-token');
+              }
+            };
+
+            if (typeof node.onload === 'function') {
+              node.onload();
+            }
+          }, 120);
+          return node;
+        }
+
+        return originalAppendChild(node);
+      };
     });
   } else {
     await page.evaluate(() => {
@@ -188,6 +214,35 @@ test('submits feedback to the test endpoint and shows success', async ({ page })
   expect(payload.data.captchaCatch).toBe('dev');
 
   await expect(page.locator('#page-feedback-form')).toBeHidden();
+  await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
+  await expect(page.locator('#page-feedback-error')).toBeHidden();
+});
+
+test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) => {
+  test.skip(useRealRecaptcha, 'Delayed reCAPTCHA simulation applies to mocked mode only.');
+
+  // Regression guard for the grecaptcha undefined race:
+  // submit should wait for the script-load promise before execute.
+  await loadWidget(page, { simulateDelayedRecaptchaLoad: true });
+  await page.route('**/services/submissions/email/feedback/feedback-v4', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true })
+    });
+  });
+
+  await page.click('#feedback-useful-yes');
+
+  const requestPromise = page.waitForRequest(function (request) {
+    return request.url().includes('/services/submissions/email/feedback/feedback-v4') && request.method() === 'POST';
+  });
+
+  await page.click('#page-feedback-submit');
+  const request = await requestPromise;
+  const payload = JSON.parse(request.postData());
+
+  expect(payload.data.captcha.token).toBe('delayed-test-token');
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
   await expect(page.locator('#page-feedback-error')).toBeHidden();
 });

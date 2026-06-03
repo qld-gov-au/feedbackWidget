@@ -1,13 +1,29 @@
 (function () {
     const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA;
-    let recaptchaLoaded = false;
+    let recaptchaLoadPromise = null;
 
     function loadRecaptcha() {
-        if (recaptchaLoaded) { return; }
-        recaptchaLoaded = true;
-        const script = document.createElement('script');
-        script.src = 'https://www.google.com/recaptcha/api.js?render=' + RECAPTCHA_SITE_KEY;
-        document.head.appendChild(script);
+        if (window.grecaptcha && typeof window.grecaptcha.execute === 'function') {
+            return Promise.resolve();
+        }
+
+        if (recaptchaLoadPromise) {
+            return recaptchaLoadPromise;
+        }
+
+        recaptchaLoadPromise = new Promise(function (resolve, reject) {
+            const script = document.createElement('script');
+            script.src = 'https://www.google.com/recaptcha/api.js?render=' + RECAPTCHA_SITE_KEY;
+            script.onload = function () {
+                resolve();
+            };
+            script.onerror = function () {
+                reject(new Error('Unable to load reCAPTCHA script'));
+            };
+            document.head.appendChild(script);
+        });
+
+        return recaptchaLoadPromise;
     }
 
     function getBrowserInfo() {
@@ -62,7 +78,9 @@
 
     radios.forEach(function (radio) {
         radio.addEventListener('change', function () {
-            loadRecaptcha();
+            loadRecaptcha().catch(function (err) {
+                console.error('reCAPTCHA preload error:', err);
+            });
             details.hidden = false;
             if (radio.value === 'yes') {
                 label.textContent = 'What worked well for you (optional)';
@@ -85,8 +103,19 @@
         }
 
         setButtonLoading(true);
-        grecaptcha.ready(function () {
-            grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'feedback' })
+        loadRecaptcha()
+            .then(function () {
+                return new Promise(function (resolve, reject) {
+                    if (!window.grecaptcha || typeof window.grecaptcha.ready !== 'function') {
+                        reject(new Error('reCAPTCHA is not available'));
+                        return;
+                    }
+                    window.grecaptcha.ready(resolve);
+                });
+            })
+            .then(function () {
+                return window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'feedback' });
+            })
                 .then(function (token) {
                     const usefulRadio = form.querySelector('input[name="data.useful"]:checked');
                     const tzOffset = -new Date().getTimezoneOffset();
@@ -151,6 +180,5 @@
                     error.hidden = false;
                     error.removeAttribute('hidden');
                 });
-        });
     });
 })();
