@@ -62,6 +62,7 @@ async function loadWidget(page, options) {
     referer: smokeData.referrer
   });
 
+  // Mode A: use real Google reCAPTCHA for integration-style smoke runs.
   if (useRealRecaptcha) {
     if (!realRecaptchaSiteKey) {
       throw new Error('SMOKE_RECAPTCHA_SITE_KEY is required when SMOKE_USE_REAL_RECAPTCHA=true');
@@ -76,10 +77,13 @@ async function loadWidget(page, options) {
         && typeof window.grecaptcha.execute === 'function';
     });
   } else if (opts.simulateDelayedRecaptchaLoad) {
+    // Mode B: emulate slow third-party script availability to regression-test
+    // the submit flow's wait-for-load behavior.
     await page.evaluate(() => {
       const originalAppendChild = document.head.appendChild.bind(document.head);
       document.head.appendChild = function (node) {
         if (node && node.tagName === 'SCRIPT' && /google\.com\/recaptcha\/api\.js/.test(node.src || '')) {
+          // Delay script readiness and manually fire onload the way the browser would.
           setTimeout(function () {
             window.grecaptcha = {
               ready(cb) {
@@ -101,6 +105,7 @@ async function loadWidget(page, options) {
       };
     });
   } else {
+    // Mode C (default): deterministic local smoke mode with mocked token.
     await page.evaluate(() => {
       window.grecaptcha = {
         ready(cb) {
@@ -173,6 +178,8 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   const feedback = getSubmissionFeedback(runnerIp);
   await page.fill('#pageFeedbackComment', feedback);
 
+  // Capture the exact outbound payload so assertions validate transport data,
+  // not only on-screen state changes.
   const requestPromise = page.waitForRequest(function (request) {
     return request.url().includes('/services/submissions/email/feedback/feedback-v4') && request.method() === 'POST';
   });
@@ -195,6 +202,7 @@ test('submits feedback to the test endpoint and shows success', async ({ page })
   const runnerIp = await getRunnerIp();
   const feedback = getSubmissionFeedback(runnerIp);
   await page.fill('#pageFeedbackComment', feedback);
+  // Wait for the submission request and assert against JSON body content.
   const requestPromise = page.waitForRequest(function (request) {
     return request.url().includes('/services/submissions/email/feedback/feedback-v4') && request.method() === 'POST';
   });

@@ -2,6 +2,22 @@
     const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA;
     let recaptchaLoadPromise = null;
 
+    function loadRecaptchaScript(url) {
+        return new Promise(function (resolve, reject) {
+            const script = document.createElement('script');
+            script.src = url;
+            script.async = true;
+            script.defer = true;
+            script.onload = function () {
+                resolve();
+            };
+            script.onerror = function () {
+                reject(new Error('Unable to load reCAPTCHA script: ' + url));
+            };
+            document.head.appendChild(script);
+        });
+    }
+
     function loadRecaptcha() {
         if (window.grecaptcha && typeof window.grecaptcha.execute === 'function') {
             return Promise.resolve();
@@ -11,17 +27,21 @@
             return recaptchaLoadPromise;
         }
 
-        recaptchaLoadPromise = new Promise(function (resolve, reject) {
-            const script = document.createElement('script');
-            script.src = 'https://www.google.com/recaptcha/api.js?render=' + RECAPTCHA_SITE_KEY;
-            script.onload = function () {
-                resolve();
-            };
-            script.onerror = function () {
-                reject(new Error('Unable to load reCAPTCHA script'));
-            };
-            document.head.appendChild(script);
-        });
+        const primaryUrl = 'https://www.google.com/recaptcha/api.js?render=' + RECAPTCHA_SITE_KEY;
+        const fallbackUrl = 'https://www.recaptcha.net/recaptcha/api.js?render=' + RECAPTCHA_SITE_KEY;
+
+        recaptchaLoadPromise = loadRecaptchaScript(primaryUrl)
+            .catch(function () {
+                return loadRecaptchaScript(fallbackUrl);
+            })
+            .catch(function () {
+                throw new Error('Unable to load reCAPTCHA script from all known hosts');
+            })
+            .catch(function (err) {
+                // Allow retry on the next user interaction/submit after a transient failure.
+                recaptchaLoadPromise = null;
+                throw err;
+            });
 
         return recaptchaLoadPromise;
     }
