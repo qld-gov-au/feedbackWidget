@@ -15,6 +15,12 @@ Source: tests/smoke.spec.js
 ## Run
 `npm test`
 
+## BrowserStack (local-only)
+- `npm run test:browserstack` runs BrowserStack smoke tests using a single default lane (`edge-win11`).
+- `BROWSERSTACK_MATRIX=all npm run test:browserstack` runs the full matrix from `playwright.browserstack.config.js`.
+- Requires local `.env` values for `BROWSERSTACK_USERNAME` and `BROWSERSTACK_ACCESS_KEY`.
+- The BrowserStack config is blocked in GitHub Actions (`GITHUB_ACTIONS=true`).
+
 ## Notes
 - Headless mode is controlled by `PLAYWRIGHT_HEADLESS`.
 - Real reCAPTCHA mode is controlled by `SMOKE_USE_REAL_RECAPTCHA`.

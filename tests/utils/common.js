@@ -43,6 +43,26 @@ function getExpectedOS() {
   return process.env.GITHUB_ACTIONS === 'true' ? 'Linux' : 'Mac OS';
 }
 
+function getExpectedBrowserName(projectName) {
+  if (/edge/i.test(projectName)) {
+    return 'Edge';
+  }
+  if (/webkit|safari/i.test(projectName)) {
+    return 'Safari';
+  }
+  return 'Chrome';
+}
+
+function getExpectedOSForProject(projectName) {
+  if (/win/i.test(projectName)) {
+    return 'Windows';
+  }
+  if (/osx|mac|webkit|safari/i.test(projectName)) {
+    return 'Mac OS';
+  }
+  return getExpectedOS();
+}
+
 function renderTestDocument(sourceHtml, smokeData) {
   // Render the source fragment inside a minimal document so the widget runs
   // with the same markup as production, but with controlled test values.
@@ -150,6 +170,8 @@ module.exports = {
   getSubmissionFeedback,
   logPayload,
   getExpectedOS,
+  getExpectedBrowserName,
+  getExpectedOSForProject,
   renderTestDocument,
   loadWidget,
 };

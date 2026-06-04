@@ -1,20 +1,64 @@
 (function () {
     const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA;
+    const RECAPTCHA_HOSTS = [
+        'https://www.google.com/recaptcha/api.js?render=',
+        'https://www.recaptcha.net/recaptcha/api.js?render='
+    ];
     let recaptchaLoadPromise = null;
+
+    function getScriptTarget() {
+        return document.head || document.body || document.documentElement;
+    }
+
+    function getScriptNonce() {
+        const scriptWithNonce = document.querySelector('script[nonce]');
+        if (!scriptWithNonce) {
+            return '';
+        }
+        return scriptWithNonce.getAttribute('nonce') || '';
+    }
 
     function loadRecaptchaScript(url) {
         return new Promise(function (resolve, reject) {
+            const target = getScriptTarget();
+            if (!target) {
+                reject(new Error('Unable to find a script container element in the document'));
+                return;
+            }
+
             const script = document.createElement('script');
             script.src = url;
             script.async = true;
             script.defer = true;
+
+            const nonce = getScriptNonce();
+            if (nonce) {
+                script.setAttribute('nonce', nonce);
+            }
+
             script.onload = function () {
                 resolve();
             };
             script.onerror = function () {
                 reject(new Error('Unable to load reCAPTCHA script: ' + url));
             };
-            document.head.appendChild(script);
+            target.appendChild(script);
+        });
+    }
+
+    function loadRecaptchaFromHosts(index, errors) {
+        if (index >= RECAPTCHA_HOSTS.length) {
+            const diagnostics = errors.map(function (entry) {
+                return entry.url + ' -> ' + entry.error.message;
+            }).join('; ');
+
+            throw new Error('Unable to load reCAPTCHA script from all known hosts. Details: ' + diagnostics);
+        }
+
+        const url = RECAPTCHA_HOSTS[index] + encodeURIComponent(RECAPTCHA_SITE_KEY || '');
+        return loadRecaptchaScript(url).catch(function (err) {
+            errors.push({ url: url, error: err });
+            return loadRecaptchaFromHosts(index + 1, errors);
         });
     }
 
@@ -27,16 +71,7 @@
             return recaptchaLoadPromise;
         }
 
-        const primaryUrl = 'https://www.google.com/recaptcha/api.js?render=' + RECAPTCHA_SITE_KEY;
-        const fallbackUrl = 'https://www.recaptcha.net/recaptcha/api.js?render=' + RECAPTCHA_SITE_KEY;
-
-        recaptchaLoadPromise = loadRecaptchaScript(primaryUrl)
-            .catch(function () {
-                return loadRecaptchaScript(fallbackUrl);
-            })
-            .catch(function () {
-                throw new Error('Unable to load reCAPTCHA script from all known hosts');
-            })
+        recaptchaLoadPromise = loadRecaptchaFromHosts(0, [])
             .catch(function (err) {
                 // Allow retry on the next user interaction/submit after a transient failure.
                 recaptchaLoadPromise = null;

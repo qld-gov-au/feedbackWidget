@@ -8,7 +8,15 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('@playwright/test');
-const { smokeData, getRunnerIp, getSubmissionFeedback, getExpectedOS, logPayload, loadWidget } = require('./utils/common');
+const {
+  smokeData,
+  getRunnerIp,
+  getSubmissionFeedback,
+  getExpectedBrowserName,
+  getExpectedOSForProject,
+  logPayload,
+  loadWidget
+} = require('./utils/common');
 
 const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.html'), 'utf8');
 const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
@@ -95,7 +103,7 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   await expect(page.locator('#page-feedback-error')).toHaveText('Sorry, your feedback could not be submitted right now.');
 });
 
-test('submits feedback to the test endpoint and shows success', async ({ page }) => {
+test('submits feedback to the test endpoint and shows success', async ({ page }, testInfo) => {
   // End-to-end smoke check: submit a real payload, capture the request body,
   // and verify the important fields plus the success UI state.
   await loadWidget(page, widgetOptions);
@@ -119,8 +127,8 @@ test('submits feedback to the test endpoint and shows success', async ({ page })
   expect(payload.data['page-referer']).toBe(smokeData.referrer);
   expect(payload.data['franchise']).toBe(smokeData.franchise);
   expect(payload.data.useful).toBe(smokeData.useful);
-  expect(payload.data.browserName.name).toBe('Chrome');
-  expect(payload.data.OS).toBe(getExpectedOS());
+  expect(payload.data.browserName.name).toBe(getExpectedBrowserName(testInfo.project.name));
+  expect(payload.data.OS).toBe(getExpectedOSForProject(testInfo.project.name));
   expect(payload.data.comments).toContain(smokeData.feedbackPrefix);
   expect(payload.data.captchaCatch).toBe('dev');
 

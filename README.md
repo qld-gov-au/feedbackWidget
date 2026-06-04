@@ -100,6 +100,35 @@ Playwright headless mode is controlled by `PLAYWRIGHT_HEADLESS` in `playwright.c
 
 CI is intentionally always headless. Use local `.env` values when you want headed debugging.
 
+### Optional: local-only BrowserStack cross-browser runs
+
+You can run the same Playwright smoke spec on BrowserStack for obscure browser/OS combinations without touching the GitHub Actions workflow.
+
+1. Add BrowserStack credentials to your local `.env`:
+
+```bash
+BROWSERSTACK_USERNAME=<your BrowserStack username>
+BROWSERSTACK_ACCESS_KEY=<your BrowserStack access key>
+```
+
+2. Run BrowserStack smoke tests locally (single default lane: Edge on Windows 11):
+
+```bash
+npm run test:browserstack
+```
+
+3. Optional: run the full BrowserStack matrix (Edge + Chrome + WebKit):
+
+```bash
+BROWSERSTACK_MATRIX=all npm run test:browserstack
+```
+
+Notes:
+- BrowserStack runs are configured in `playwright.browserstack.config.js`.
+- By default `BROWSERSTACK_MATRIX=single` (implicit) runs only `edge-win11` to keep feedback cycles fast.
+- The BrowserStack config throws an error when `GITHUB_ACTIONS=true`, so these runs stay local/dev-only by design.
+- Existing CI keeps using `npm test` with `playwright.config.js` only.
+
 ## JavaScript (`src/js/feedback.js`)
 
 The script is wrapped in an IIFE and has no external dependencies beyond the Google reCAPTCHA v3 API. On load it writes `document.title`, `window.location.href`, and `document.referrer` into the form's hidden fields. The reCAPTCHA script is lazy-loaded the first time the user interacts with a Yes/No radio button, avoiding an unnecessary network request on pages where the form is never used. When a radio is selected the comment section is revealed and the comment label updates dynamically to match the chosen sentiment ("What worked well for you" vs "What didn't work for you"). On submit the script validates the form natively via `checkValidity()`, disables the submit button to prevent double-submission, then calls `grecaptcha.execute()` to obtain a token. That token is appended to a `FormData` object and the whole payload is sent via `fetch`. A successful `2xx` response hides the form and shows the success message; any network or HTTP error re-enables the submit button and reveals the error message. The `process.env.RECAPTCHA` and `process.env.BUILD_ENV` references are replaced with literal values at build time by esbuild, so no environment variables are present in the deployed output.
