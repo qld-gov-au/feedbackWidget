@@ -64,11 +64,16 @@ function getExpectedOSForProject(projectName) {
 }
 
 function renderTestDocument(sourceHtml, smokeData) {
+  const fshProject = process.env.FSH_PROJECT || 'feedback';
+  const fshEndpoint = process.env.FSH_ENDPOINT || 'feedback-v4';
+
   // Render the source fragment inside a minimal document so the widget runs
   // with the same markup as production, but with controlled test values.
   const html = sourceHtml
     .replace('__BUILD_ENV__', 'dev')
     .replace('__SMARTSERVICE_HOST__', 'test.smartservice.qld.gov.au')
+    .replace('__FSH_PROJECT__', fshProject)
+    .replace('__FSH_ENDPOINT__', fshEndpoint)
     .replace('name="data.franchise" value=""', `name="data.franchise" value="${smokeData.franchise}"`);
 
   return `<!DOCTYPE html>

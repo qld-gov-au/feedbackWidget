@@ -25,6 +25,9 @@ const smartserviceHost = env === 'prod'
     ? 'www.smartservice.qld.gov.au'
     : 'test.smartservice.qld.gov.au';
 
+const fshProject = process.env.FSH_PROJECT || 'feedback';
+const fshEndpoint = process.env.FSH_ENDPOINT || 'feedback-v4';
+
 console.log(`Building for environment: ${env}`);
 
 mkdirSync('dist', { recursive: true });
@@ -47,7 +50,9 @@ console.log('Built: dist/feedback.min.js');
 // --- HTML: minify + inject BUILD_ENV into captchaCatch ---
 const rawHtml = readFileSync('src/html/index.html', 'utf8')
     .replace('__BUILD_ENV__', env)
-    .replace('__SMARTSERVICE_HOST__', smartserviceHost);
+    .replace('__SMARTSERVICE_HOST__', smartserviceHost)
+    .replace('__FSH_PROJECT__', fshProject)
+    .replace('__FSH_ENDPOINT__', fshEndpoint);
 const minifiedHtml = minifyHtml(rawHtml);
 writeFileSync('dist/feedback.min.html', minifiedHtml);
 console.log('Built: dist/feedback.min.html');

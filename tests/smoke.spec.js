@@ -22,6 +22,10 @@ const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.ht
 const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
 const useRealRecaptcha = process.env.SMOKE_USE_REAL_RECAPTCHA === 'true';
 const realRecaptchaSiteKey = process.env.SMOKE_RECAPTCHA_SITE_KEY || process.env.RECAPTCHA_DEV || '';
+const fshProject = process.env.FSH_PROJECT || 'feedback';
+const fshEndpoint = process.env.FSH_ENDPOINT || 'feedback-v4';
+const submitPathFragment = '/services/submissions/email/' + fshProject + '/' + fshEndpoint;
+const submitPathRoutePattern = '**' + submitPathFragment;
 const widgetOptions = {
   builtScriptPath,
   realRecaptchaSiteKey,
@@ -72,7 +76,7 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   // Failure-path smoke check: mock the submit endpoint to return an error and
   // confirm the widget hides the form and surfaces the error state.
   await loadWidget(page, widgetOptions);
-  await page.route('**/services/submissions/email/feedback/feedback-v4', async route => {
+  await page.route(submitPathRoutePattern, async route => {
     await route.fulfill({
       status: 500,
       contentType: 'application/json',
@@ -90,7 +94,7 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   // Capture the exact outbound payload so assertions validate transport data,
   // not only on-screen state changes.
   const requestPromise = page.waitForRequest(function (request) {
-    return request.url().includes('/services/submissions/email/feedback/feedback-v4') && request.method() === 'POST';
+    return request.url().includes(submitPathFragment) && request.method() === 'POST';
   });
 
   await page.click('#page-feedback-submit');
@@ -114,7 +118,7 @@ test('submits feedback to the test endpoint and shows success', async ({ page },
   await page.fill('#pageFeedbackComment', feedback);
   // Wait for the submission request and assert against JSON body content.
   const requestPromise = page.waitForRequest(function (request) {
-    return request.url().includes('/services/submissions/email/feedback/feedback-v4') && request.method() === 'POST';
+    return request.url().includes(submitPathFragment) && request.method() === 'POST';
   });
   await page.click('#page-feedback-submit');
 
@@ -146,7 +150,7 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
     ...widgetOptions,
     simulateDelayedRecaptchaLoad: true,
   });
-  await page.route('**/services/submissions/email/feedback/feedback-v4', async route => {
+  await page.route(submitPathRoutePattern, async route => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -157,7 +161,7 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
   await page.click('#feedback-useful-yes');
 
   const requestPromise = page.waitForRequest(function (request) {
-    return request.url().includes('/services/submissions/email/feedback/feedback-v4') && request.method() === 'POST';
+    return request.url().includes(submitPathFragment) && request.method() === 'POST';
   });
 
   await page.click('#page-feedback-submit');

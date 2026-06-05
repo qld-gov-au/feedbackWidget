@@ -1,136 +1,20 @@
 (function () {
     const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA;
-    const RECAPTCHA_SCRIPT_TIMEOUT_MS = 10000;
-    const RECAPTCHA_HOSTS = [
-        'https://www.google.com/recaptcha/api.js?render=',
-        'https://www.recaptcha.net/recaptcha/api.js?render='
-    ];
     let recaptchaLoadPromise = null;
 
-    function getScriptTarget() {
-        return document.head || document.body || document.documentElement;
-    }
-
-    function getScriptNonce() {
-        const scriptWithNonce = document.querySelector('script[nonce]');
-        if (!scriptWithNonce) {
-            return '';
-        }
-        return scriptWithNonce.getAttribute('nonce') || '';
-    }
-
-    function getRecaptchaDiagnostics(extra) {
-        const details = {
-            online: navigator.onLine,
-            location: window.location.origin,
-            userAgent: navigator.userAgent
-        };
-
-        if (extra && typeof extra === 'object') {
-            Object.keys(extra).forEach(function (key) {
-                details[key] = extra[key];
-            });
-        }
-
-        return JSON.stringify(details);
-    }
-
-    function withSecurityPolicyDiagnostics(loadOperation) {
-        const violations = [];
-
-        function onViolation(event) {
-            if (!event) {
-                return;
-            }
-            violations.push({
-                blockedURI: event.blockedURI || '',
-                violatedDirective: event.violatedDirective || '',
-                effectiveDirective: event.effectiveDirective || ''
-            });
-        }
-
-        document.addEventListener('securitypolicyviolation', onViolation);
-
-        return loadOperation()
-            .catch(function (err) {
-                const message = err && err.message ? err.message : String(err);
-                const diagnostics = getRecaptchaDiagnostics({
-                    cspViolations: violations
-                });
-                throw new Error(message + ' | diagnostics=' + diagnostics);
-            })
-            .finally(function () {
-                document.removeEventListener('securitypolicyviolation', onViolation);
-            });
-    }
-
     function loadRecaptchaScript(url) {
-        return withSecurityPolicyDiagnostics(function () {
-            return new Promise(function (resolve, reject) {
-            const target = getScriptTarget();
-            if (!target) {
-                reject(new Error('Unable to find a script container element in the document'));
-                return;
-            }
-
+        return new Promise(function (resolve, reject) {
             const script = document.createElement('script');
             script.src = url;
             script.async = true;
             script.defer = true;
-
-            const nonce = getScriptNonce();
-            if (nonce) {
-                script.setAttribute('nonce', nonce);
-            }
-
-            let settled = false;
-            const timeoutId = window.setTimeout(function () {
-                if (settled) {
-                    return;
-                }
-                settled = true;
-                reject(new Error('Timed out loading reCAPTCHA script after ' + RECAPTCHA_SCRIPT_TIMEOUT_MS + 'ms: ' + url));
-            }, RECAPTCHA_SCRIPT_TIMEOUT_MS);
-
-            function clearAndSettle() {
-                if (settled) {
-                    return false;
-                }
-                settled = true;
-                window.clearTimeout(timeoutId);
-                return true;
-            }
-
             script.onload = function () {
-                if (!clearAndSettle()) {
-                    return;
-                }
                 resolve();
             };
             script.onerror = function () {
-                if (!clearAndSettle()) {
-                    return;
-                }
                 reject(new Error('Unable to load reCAPTCHA script: ' + url));
             };
-            target.appendChild(script);
-        });
-        });
-    }
-
-    function loadRecaptchaFromHosts(index, errors) {
-        if (index >= RECAPTCHA_HOSTS.length) {
-            const diagnostics = errors.map(function (entry) {
-                return entry.url + ' -> ' + entry.error.message;
-            }).join('; ');
-
-            throw new Error('Unable to load reCAPTCHA script from all known hosts. Details: ' + diagnostics);
-        }
-
-        const url = RECAPTCHA_HOSTS[index] + encodeURIComponent(RECAPTCHA_SITE_KEY || '');
-        return loadRecaptchaScript(url).catch(function (err) {
-            errors.push({ url: url, error: err });
-            return loadRecaptchaFromHosts(index + 1, errors);
+            document.head.appendChild(script);
         });
     }
 
@@ -143,7 +27,16 @@
             return recaptchaLoadPromise;
         }
 
-        recaptchaLoadPromise = loadRecaptchaFromHosts(0, [])
+        const primaryUrl = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(RECAPTCHA_SITE_KEY || '');
+        const fallbackUrl = 'https://www.recaptcha.net/recaptcha/api.js?render=' + encodeURIComponent(RECAPTCHA_SITE_KEY || '');
+
+        recaptchaLoadPromise = loadRecaptchaScript(primaryUrl)
+            .catch(function () {
+                return loadRecaptchaScript(fallbackUrl);
+            })
+            .catch(function () {
+                throw new Error('Unable to load reCAPTCHA script from all known hosts');
+            })
             .catch(function (err) {
                 // Allow retry on the next user interaction/submit after a transient failure.
                 recaptchaLoadPromise = null;

@@ -26,6 +26,9 @@ tests/
 # .env
 RECAPTCHA_DEV=<your reCAPTCHA v3 dev site key>
 RECAPTCHA_PROD=<your reCAPTCHA v3 prod site key>
+# optional submission path suffix: /services/submissions/email/{FSH_PROJECT}/{FSH_ENDPOINT}
+FSH_PROJECT=feedback
+FSH_ENDPOINT=feedback-v3-*
 PLAYWRIGHT_HEADLESS=true
 ```
 
@@ -169,8 +172,9 @@ Each run:
 1. Checks out source on `ubuntu-latest` with Node 24
 2. Runs `npm install`
 3. Builds using the appropriate reCAPTCHA key from repository secrets (`RECAPTCHA_DEV` or `RECAPTCHA_PROD`)
-4. Runs Playwright smoke tests against the source HTML fragment in `src/html/index.html` with the built `dist/feedback.min.js`, including a live success path and a forced failure-path assertion
-5. Pushes only the `dist/` folder to the target release branch via a git worktree (skips the commit if nothing changed)
+4. Injects endpoint path vars (`FSH_PROJECT`, `FSH_ENDPOINT`) from repository variables
+5. Runs Playwright smoke tests against the source HTML fragment in `src/html/index.html` with the built `dist/feedback.min.js`, including a live success path and a forced failure-path assertion
+6. Pushes only the `dist/` folder to the target release branch via a git worktree (skips the commit if nothing changed)
 
 ### Triggering a dev rebuild without a pull request
 
@@ -188,6 +192,16 @@ git push origin feature-test
 | `RECAPTCHA_PROD` | production build |
 
 Set these under **Settings → Secrets and variables → Actions** in the GitHub repository.
+
+### Repository variables
+
+| Variable | Default | Used by |
+|---|---|---|
+| `FSH_PROJECT` | `feedback` | final submission path segment 1 |
+| `FSH_ENDPOINT` | `feedback-v4` | final submission path segment 2 |
+
+These are read in GitHub Actions and written into `.env` before build, producing:
+`/services/submissions/email/{FSH_PROJECT}/{FSH_ENDPOINT}`
 
 ## Usage
 
