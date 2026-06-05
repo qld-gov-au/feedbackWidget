@@ -73,7 +73,7 @@
     const form = document.getElementById('page-feedback-form');
     const details = document.getElementById('page-feedback-details');
     const label = document.getElementById('pageFeedbackCommentLabel');
-    const radios = form.querySelectorAll('input[name="data.useful"]');
+    const radios = form.querySelectorAll('input[name="feedback-satisfaction"]');
     const success = document.getElementById('page-feedback-success');
     const error = document.getElementById('page-feedback-error');
     const submitButton = document.getElementById('page-feedback-submit');
@@ -102,10 +102,10 @@
                 console.error('reCAPTCHA preload error:', err);
             });
             details.hidden = false;
-            if (radio.value === 'yes') {
+            if (radio.id === 'feedback-useful-yes') {
                 label.textContent = 'What worked well for you (optional)';
             }
-            if (radio.value === 'no') {
+            if (radio.id === 'feedback-useful-no') {
                 label.textContent = 'What didn’t work for you (optional)';
             }
         });
@@ -137,25 +137,25 @@
                 return window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'feedback' });
             })
                 .then(function (token) {
-                    const usefulRadio = form.querySelector('input[name="data.useful"]:checked');
+                    const satisfactionRadio = form.querySelector('input[name="feedback-satisfaction"]:checked');
                     const tzOffset = -new Date().getTimezoneOffset();
                     const payload = {
                         data: {
-                            'useful':           usefulRadio ? usefulRadio.value : '',
-                            'feedback-a':       fieldValue('data.feedback-a'),
-                            'feedback-b':       fieldValue('data.feedback-b'),
-                            'feedback-c':       fieldValue('data.feedback-c'),
-                            'feedback-d':       fieldValue('data.feedback-d'),
-                            'dataset-owner':    fieldValue('data.dataset-owner'),
+                            'feedback-satisfaction': satisfactionRadio ? satisfactionRadio.value : '',
+                            'feedback-a':       fieldValue('feedback-a'),
+                            'feedback-b':       fieldValue('feedback-b'),
+                            'feedback-c':       fieldValue('feedback-c'),
+                            'feedback-d':       fieldValue('feedback-d'),
+                            'dataset-owner':    fieldValue('dataset-owner'),
                             'page-title':       document.getElementById('data-page-title').value,
                             'page-url':         document.getElementById('data-page-url').value,
                             'page-referer':     document.getElementById('data-page-referer').value,
                             'rspUsrAgent':      navigator.userAgent,
                             'browserName':      getBrowserInfo(),
                             'OS':               getOS(),
-                            'franchise':        fieldValue('data.franchise'),
-                            'captchaCatch':     fieldValue('data.captchaCatch'),
-                            'captcha-honeypot': fieldValue('data.captcha'),
+                            'franchise':        fieldValue('franchise'),
+                            'captchaCatch':     fieldValue('captchaCatch'),
+                            'captcha-honeypot': fieldValue('captcha'),
                             'feedback-captcha': fieldValue('feedback-captcha'),
                             'comments':         document.getElementById('pageFeedbackComment').value,
                             'submit':           true,

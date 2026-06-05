@@ -7,7 +7,7 @@ const smokeData = {
   pageUrl: makeText(['https://github.com/', 'qld-gov-au/', 'feedbackWidget']),
   referrer: makeText(['https://github.com/', 'qld-gov-au']),
   franchise: makeText(['QGDS', ' Developers']),
-  useful: 'yes',
+  feedbackSatisfaction: 'Satisfied (4)',
   feedbackPrefix: makeText(['Feedback: ', 'Play', 'wright', ' smoke', ' submission ;)'])
 };
 
@@ -64,8 +64,8 @@ function getExpectedOSForProject(projectName) {
 }
 
 function renderTestDocument(sourceHtml, smokeData) {
-  const fshProject = process.env.FSH_PROJECT || 'feedback';
-  const fshEndpoint = process.env.FSH_ENDPOINT || 'feedback-v4';
+  const fshProject = process.env.FSH_PROJECT;
+  const fshEndpoint = process.env.FSH_ENDPOINT;
 
   // Render the source fragment inside a minimal document so the widget runs
   // with the same markup as production, but with controlled test values.
@@ -74,7 +74,7 @@ function renderTestDocument(sourceHtml, smokeData) {
     .replace('__SMARTSERVICE_HOST__', 'test.smartservice.qld.gov.au')
     .replace('__FSH_PROJECT__', fshProject)
     .replace('__FSH_ENDPOINT__', fshEndpoint)
-    .replace('name="data.franchise" value=""', `name="data.franchise" value="${smokeData.franchise}"`);
+    .replace('name="franchise" value=""', `name="franchise" value="${smokeData.franchise}"`);
 
   return `<!DOCTYPE html>
     <html lang="en">

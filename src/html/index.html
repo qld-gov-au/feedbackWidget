@@ -4,20 +4,20 @@
   id="page-feedback-form"
 >
   <!-- Metadata fields populated by JS -->
-  <input type="hidden" name="data.page-title" id="data-page-title" />
-  <input type="hidden" name="data.page-url" id="data-page-url" />
-  <input type="hidden" name="data.page-referer" id="data-page-referer" />
+  <input type="hidden" name="page-title" id="data-page-title" />
+  <input type="hidden" name="page-url" id="data-page-url" />
+  <input type="hidden" name="page-referer" id="data-page-referer" />
 
   <!-- Static environment fields -->
-  <input type="hidden" name="data.franchise" value="" />
+  <input type="hidden" name="franchise" value="" />
   <!-- Use "dev" for staging/test, "prod" for production -->
-  <input type="hidden" name="data.captchaCatch" value="__BUILD_ENV__" />
+  <input type="hidden" name="captchaCatch" value="__BUILD_ENV__" />
 
   <!-- Honeypot fields: hidden from users, visible to bots -->
   <div style="display: none" aria-hidden="true">
     <input
       type="text"
-      name="data.captcha"
+      name="captcha"
       tabindex="-1"
       autocomplete="off"
       value=""
@@ -42,9 +42,9 @@
           <input
             class="form-check-input"
             type="radio"
-            name="data.useful"
+            name="feedback-satisfaction"
             id="feedback-useful-yes"
-            value="yes"
+            value="Satisfied (4)"
             required
           />
           <label class="form-check-label" for="feedback-useful-yes">
@@ -56,9 +56,9 @@
           <input
             class="form-check-input"
             type="radio"
-            name="data.useful"
+            name="feedback-satisfaction"
             id="feedback-useful-no"
-            value="no"
+            value="Dissatisfied (2)"
             required
           />
           <label class="form-check-label" for="feedback-useful-no"> No </label>
@@ -82,7 +82,7 @@
 
       <textarea
         id="pageFeedbackComment"
-        name="data.comments"
+        name="comments"
         class="form-control mt-4"
         rows="3"
         aria-describedby="pageFeedbackComment-hint"

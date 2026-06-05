@@ -22,8 +22,8 @@ const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.ht
 const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
 const useRealRecaptcha = process.env.SMOKE_USE_REAL_RECAPTCHA === 'true';
 const realRecaptchaSiteKey = process.env.SMOKE_RECAPTCHA_SITE_KEY || process.env.RECAPTCHA_DEV || '';
-const fshProject = process.env.FSH_PROJECT || 'feedback';
-const fshEndpoint = process.env.FSH_ENDPOINT || 'feedback-v4';
+const fshProject = process.env.FSH_PROJECT;
+const fshEndpoint = process.env.FSH_ENDPOINT;
 const submitPathFragment = '/services/submissions/email/' + fshProject + '/' + fshEndpoint;
 const submitPathRoutePattern = '**' + submitPathFragment;
 const widgetOptions = {
@@ -130,7 +130,7 @@ test('submits feedback to the test endpoint and shows success', async ({ page },
   expect(payload.data['page-url']).toBe(smokeData.pageUrl);
   expect(payload.data['page-referer']).toBe(smokeData.referrer);
   expect(payload.data['franchise']).toBe(smokeData.franchise);
-  expect(payload.data.useful).toBe(smokeData.useful);
+  expect(payload.data['feedback-satisfaction']).toBe(smokeData.feedbackSatisfaction);
   expect(payload.data.browserName.name).toBe(getExpectedBrowserName(testInfo.project.name));
   expect(payload.data.OS).toBe(getExpectedOSForProject(testInfo.project.name));
   expect(payload.data.comments).toContain(smokeData.feedbackPrefix);
