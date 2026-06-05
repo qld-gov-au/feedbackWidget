@@ -40,7 +40,9 @@ function logPayload(label, payload) {
 }
 
 function getExpectedOS() {
-  return process.env.GITHUB_ACTIONS === 'true' ? 'Linux' : 'Mac OS';
+  if (process.env.GITHUB_ACTIONS === "true") return "Linux";
+  if (process.platform === "win32") return "Windows";
+  return "Mac OS";
 }
 
 function getExpectedBrowserName(projectName) {
