@@ -70,6 +70,30 @@
         return el ? el.value : '';
     }
 
+    function resolveFranchise() {
+        const explicitFranchise = fieldValue('franchise').trim();
+        if (explicitFranchise) {
+            return explicitFranchise;
+        }
+        const sweFranchise = window.qg
+            && window.qg.swe
+            && typeof window.qg.swe.franchiseTitle === 'string'
+            ? window.qg.swe.franchiseTitle.trim()
+            : '';
+        if (sweFranchise) {
+            return sweFranchise;
+        }
+        const hostOverrides = {
+            'www.business.qld.gov.au': 'Business Queensland',
+            'www.familywellbeingqld.org.au': 'Aboriginal and Torres Strait Islander Family Wellbeing Services',
+            'www.forgov.qld.gov.au': 'Government employees'
+        };
+        if (hostOverrides[window.location.hostname]) {
+            return hostOverrides[window.location.hostname];
+        }
+        return window.location.pathname.split('/').filter(Boolean)[0] || '';
+    }
+
     const form = document.getElementById('page-feedback-form');
     const details = document.getElementById('page-feedback-details');
     const label = document.getElementById('pageFeedbackCommentLabel');
@@ -153,7 +177,7 @@
                             'rspUsrAgent':      navigator.userAgent,
                             'browserName':      getBrowserInfo(),
                             'OS':               getOS(),
-                            'franchise':        fieldValue('franchise'),
+                            'franchise':        resolveFranchise(),
                             'captchaCatch':     fieldValue('captchaCatch'),
                             'captcha-honeypot': fieldValue('captcha'),
                             'feedback-captcha': fieldValue('feedback-captcha'),

@@ -20,6 +20,14 @@ tests/
 - Node.js 24 or later
 - A `.env` file at the project root (copy from `.env.sample`)
 
+If you use `nvm`, run:
+
+```bash
+nvm use
+```
+
+This project pins Node via `.nvmrc`.
+
 ### Environment variables
 
 ```

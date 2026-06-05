@@ -39,6 +39,38 @@ function logPayload(label, payload) {
   console.log(JSON.stringify(payload, null, 2));
 }
 
+function isGithubActions() {
+  return process.env.GITHUB_ACTIONS === 'true';
+}
+
+function formatSmokeLog(level, message) {
+  return `Smoke Check | ${level} | ${message}`;
+}
+
+function logSmokeInfo(message) {
+  const line = formatSmokeLog('INFO', message);
+  console.log(line);
+  if (isGithubActions()) {
+    console.log(`::notice title=Smoke Check::${line}`);
+  }
+}
+
+function logSmokePass(message) {
+  const line = formatSmokeLog('PASS', message);
+  console.log(line);
+  if (isGithubActions()) {
+    console.log(`::notice title=Smoke Check::${line}`);
+  }
+}
+
+function logSmokeFail(message) {
+  const line = formatSmokeLog('FAIL', message);
+  console.log(line);
+  if (isGithubActions()) {
+    console.log(`::error title=Smoke Check::${line}`);
+  }
+}
+
 function getExpectedOS() {
   if (process.env.GITHUB_ACTIONS === "true") return "Linux";
   if (process.platform === "win32") return "Windows";
@@ -176,6 +208,9 @@ module.exports = {
   getRunnerIp,
   getSubmissionFeedback,
   logPayload,
+  logSmokeInfo,
+  logSmokePass,
+  logSmokeFail,
   getExpectedOS,
   getExpectedBrowserName,
   getExpectedOSForProject,
