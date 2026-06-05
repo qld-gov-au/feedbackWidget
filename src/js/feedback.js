@@ -1,5 +1,6 @@
 (function () {
     const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA;
+    const RECAPTCHA_SCRIPT_TIMEOUT_MS = 10000;
     const RECAPTCHA_HOSTS = [
         'https://www.google.com/recaptcha/api.js?render=',
         'https://www.recaptcha.net/recaptcha/api.js?render='
@@ -18,8 +19,54 @@
         return scriptWithNonce.getAttribute('nonce') || '';
     }
 
+    function getRecaptchaDiagnostics(extra) {
+        const details = {
+            online: navigator.onLine,
+            location: window.location.origin,
+            userAgent: navigator.userAgent
+        };
+
+        if (extra && typeof extra === 'object') {
+            Object.keys(extra).forEach(function (key) {
+                details[key] = extra[key];
+            });
+        }
+
+        return JSON.stringify(details);
+    }
+
+    function withSecurityPolicyDiagnostics(loadOperation) {
+        const violations = [];
+
+        function onViolation(event) {
+            if (!event) {
+                return;
+            }
+            violations.push({
+                blockedURI: event.blockedURI || '',
+                violatedDirective: event.violatedDirective || '',
+                effectiveDirective: event.effectiveDirective || ''
+            });
+        }
+
+        document.addEventListener('securitypolicyviolation', onViolation);
+
+        return loadOperation()
+            .catch(function (err) {
+                const message = err && err.message ? err.message : String(err);
+                const diagnostics = getRecaptchaDiagnostics({
+                    cspViolations: violations
+                });
+                throw new Error(message + ' | diagnostics=' + diagnostics);
+            })
+            .finally(function () {
+                document.removeEventListener('securitypolicyviolation', onViolation);
+            });
+    }
+
     function loadRecaptchaScript(url) {
-        return new Promise(function (resolve, reject) {
+        return withSecurityPolicyDiagnostics(function () {
+            return new Promise(function (resolve, reject) {
             const target = getScriptTarget();
             if (!target) {
                 reject(new Error('Unable to find a script container element in the document'));
@@ -36,13 +83,38 @@
                 script.setAttribute('nonce', nonce);
             }
 
+            let settled = false;
+            const timeoutId = window.setTimeout(function () {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                reject(new Error('Timed out loading reCAPTCHA script after ' + RECAPTCHA_SCRIPT_TIMEOUT_MS + 'ms: ' + url));
+            }, RECAPTCHA_SCRIPT_TIMEOUT_MS);
+
+            function clearAndSettle() {
+                if (settled) {
+                    return false;
+                }
+                settled = true;
+                window.clearTimeout(timeoutId);
+                return true;
+            }
+
             script.onload = function () {
+                if (!clearAndSettle()) {
+                    return;
+                }
                 resolve();
             };
             script.onerror = function () {
+                if (!clearAndSettle()) {
+                    return;
+                }
                 reject(new Error('Unable to load reCAPTCHA script: ' + url));
             };
             target.appendChild(script);
+        });
         });
     }
 
