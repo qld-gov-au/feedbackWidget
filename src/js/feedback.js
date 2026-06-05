@@ -152,6 +152,7 @@
                 .then(function (token) {
                     const satisfactionRadio = form.querySelector('input[name="feedback-satisfaction"]:checked');
                     const tzOffset = -new Date().getTimezoneOffset();
+                    const commentsText = document.getElementById('pageFeedbackComment').value.trim();
                     const payload = {
                         data: {
                             'feedback-satisfaction': satisfactionRadio ? satisfactionRadio.value : '',
@@ -170,7 +171,7 @@
                             'captchaCatch':     BUILD_ENV,
                             'captcha-honeypot': fieldValue('captcha'),
                             'feedback-captcha': fieldValue('feedback-captcha'),
-                            'comments':         document.getElementById('pageFeedbackComment').value,
+                            'comments':         commentsText || '[no comment provided]',
                             'submit':           true,
                             'captcha':          { token: token }
                         },
