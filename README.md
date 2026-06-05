@@ -26,6 +26,10 @@ tests/
 # .env
 RECAPTCHA_DEV=<your reCAPTCHA v3 dev site key>
 RECAPTCHA_PROD=<your reCAPTCHA v3 prod site key>
+# optional submission path suffix: /services/submissions/email/{FSH_PROJECT}/{FSH_ENDPOINT}
+FSH_PROJECT=feedback
+FSH_ENDPOINT=feedback-v3-*
+PLAYWRIGHT_HEADLESS=true
 ```
 
 > The `.env.sample` file lists all required keys. Never commit real keys.
@@ -65,7 +69,68 @@ It covers:
 4. A live success submission with payload checks for page metadata, franchise, browser name, OS, captcha environment, and the feedback prefix
 5. A forced 500 response that verifies the error banner text is shown
 
-The shared test data and payload helpers live in `tests/.smoke-meta.js` so the spec itself stays focused on the assertions.
+The shared smoke helpers now live in `tests/utils/common.js` so the spec itself stays focused on the assertions.
+
+### Optional: use real reCAPTCHA tokens in smoke tests
+
+By default, smoke tests mock `grecaptcha` and use `test-token` for stability.
+To exercise real token generation in Playwright, set:
+
+```bash
+SMOKE_USE_REAL_RECAPTCHA=true
+SMOKE_RECAPTCHA_SITE_KEY=<frontend site key>
+```
+
+Notes:
+- If `SMOKE_USE_REAL_RECAPTCHA=true` and no site key is provided, tests fail fast.
+
+Example GitHub Actions step:
+
+```yaml
+- name: Run smoke tests
+  env:
+    SMOKE_USE_REAL_RECAPTCHA: "true"
+    SMOKE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_DEV }}
+  run: npm test
+```
+
+### Playwright headless mode
+
+Playwright headless mode is controlled by `PLAYWRIGHT_HEADLESS` in `playwright.config.js`.
+
+- Local default (`.env`): `PLAYWRIGHT_HEADLESS=true`
+- Hosted/CI setting (`.github/workflows/build.yml`): `PLAYWRIGHT_HEADLESS=true`
+
+CI is intentionally always headless. Use local `.env` values when you want headed debugging.
+
+### Optional: local-only BrowserStack cross-browser runs
+
+You can run the same Playwright smoke spec on BrowserStack for obscure browser/OS combinations without touching the GitHub Actions workflow.
+
+1. Add BrowserStack credentials to your local `.env`:
+
+```bash
+BROWSERSTACK_USERNAME=<your BrowserStack username>
+BROWSERSTACK_ACCESS_KEY=<your BrowserStack access key>
+```
+
+2. Run BrowserStack smoke tests locally (single default lane: Edge on Windows 11):
+
+```bash
+npm run test:browserstack
+```
+
+3. Optional: run the full BrowserStack matrix (Edge + Chrome + WebKit):
+
+```bash
+BROWSERSTACK_MATRIX=all npm run test:browserstack
+```
+
+Notes:
+- BrowserStack runs are configured in `playwright.browserstack.config.js`.
+- By default `BROWSERSTACK_MATRIX=single` (implicit) runs only `edge-win11` to keep feedback cycles fast.
+- The BrowserStack config throws an error when `GITHUB_ACTIONS=true`, so these runs stay local/dev-only by design.
+- Existing CI keeps using `npm test` with `playwright.config.js` only.
 
 ## JavaScript (`src/js/feedback.js`)
 
@@ -80,7 +145,7 @@ data[page-referer]=...
 data[franchise]=...
 data[captchaCatch]=dev|prod
 data[captcha]=
-data[useful]=yes|no
+data[feedback-satisfaction]=Satisfied (4)|Dissatisfied (2)
 data[comments]=...
 feedback-captcha=
 ```
@@ -107,8 +172,9 @@ Each run:
 1. Checks out source on `ubuntu-latest` with Node 24
 2. Runs `npm install`
 3. Builds using the appropriate reCAPTCHA key from repository secrets (`RECAPTCHA_DEV` or `RECAPTCHA_PROD`)
-4. Runs Playwright smoke tests against the source HTML fragment in `src/html/index.html` with the built `dist/feedback.min.js`, including a live success path and a forced failure-path assertion
-5. Pushes only the `dist/` folder to the target release branch via a git worktree (skips the commit if nothing changed)
+4. Injects endpoint path vars (`FSH_PROJECT`, `FSH_ENDPOINT`) from repository variables
+5. Runs Playwright smoke tests against the source HTML fragment in `src/html/index.html` with the built `dist/feedback.min.js`, including a live success path and a forced failure-path assertion
+6. Pushes only the `dist/` folder to the target release branch via a git worktree (skips the commit if nothing changed)
 
 ### Triggering a dev rebuild without a pull request
 
@@ -126,6 +192,16 @@ git push origin feature-test
 | `RECAPTCHA_PROD` | production build |
 
 Set these under **Settings → Secrets and variables → Actions** in the GitHub repository.
+
+### Repository variables
+
+| Variable | Default | Used by |
+|---|---|---|
+| `FSH_PROJECT` | `feedback` | final submission path segment 1 |
+| `FSH_ENDPOINT` | `feedback-v4` | final submission path segment 2 |
+
+These are read in GitHub Actions and written into `.env` before build, producing:
+`/services/submissions/email/{FSH_PROJECT}/{FSH_ENDPOINT}`
 
 ## Usage
 

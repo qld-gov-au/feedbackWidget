@@ -18,6 +18,7 @@ on:
   push:
     branches:
       - feature-test
+      - development
     paths:
       - 'src/**'
       - 'tests/**'
@@ -27,7 +28,6 @@ on:
       - '.github/workflows/build.yml'
   pull_request:
     branches:
-      - development
       - uat
       - main
     paths:
@@ -46,7 +46,8 @@ jobs:
     env:
       DIST_SOURCE: dist
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
+      SMOKE_USE_REAL_RECAPTCHA: 'true'
+      PLAYWRIGHT_HEADLESS: 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -77,9 +78,19 @@ jobs:
         run: npm install
 
       - name: Create .env from secrets
+        env:
+          FSH_PROJECT: ${{ vars.FSH_PROJECT }}
+          FSH_ENDPOINT: ${{ vars.FSH_ENDPOINT }}
         run: |
+          if [[ -z "$FSH_PROJECT" || -z "$FSH_ENDPOINT" ]]; then
+            echo "Error: repository variables FSH_PROJECT and FSH_ENDPOINT must be set."
+            exit 1
+          fi
+
           echo "RECAPTCHA_DEV=${{ secrets.RECAPTCHA_DEV }}" > .env
           echo "RECAPTCHA_PROD=${{ secrets.RECAPTCHA_PROD }}" >> .env
+          echo "FSH_PROJECT=${FSH_PROJECT}" >> .env
+          echo "FSH_ENDPOINT=${FSH_ENDPOINT}" >> .env
 
       - name: Build
         run: npm run build:${{ steps.config.outputs.build_env }}
@@ -93,7 +104,16 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Show smoke mode
+        run: |
+          echo "SMOKE_USE_REAL_RECAPTCHA=${SMOKE_USE_REAL_RECAPTCHA}"
+          echo "PLAYWRIGHT_HEADLESS=${PLAYWRIGHT_HEADLESS}"
+
       - name: Run smoke tests
+        env:
+          SMOKE_USE_REAL_RECAPTCHA: ${{ env.SMOKE_USE_REAL_RECAPTCHA }}
+          SMOKE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_DEV }}
+          PLAYWRIGHT_HEADLESS: ${{ env.PLAYWRIGHT_HEADLESS }}
         run: npm test
 
       - name: Push dist to ${{ steps.config.outputs.release_branch }}

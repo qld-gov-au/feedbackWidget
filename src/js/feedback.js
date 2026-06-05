@@ -1,13 +1,49 @@
 (function () {
     const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA;
-    let recaptchaLoaded = false;
+    let recaptchaLoadPromise = null;
+
+    function loadRecaptchaScript(url) {
+        return new Promise(function (resolve, reject) {
+            const script = document.createElement('script');
+            script.src = url;
+            script.async = true;
+            script.defer = true;
+            script.onload = function () {
+                resolve();
+            };
+            script.onerror = function () {
+                reject(new Error('Unable to load reCAPTCHA script: ' + url));
+            };
+            document.head.appendChild(script);
+        });
+    }
 
     function loadRecaptcha() {
-        if (recaptchaLoaded) { return; }
-        recaptchaLoaded = true;
-        const script = document.createElement('script');
-        script.src = 'https://www.google.com/recaptcha/api.js?render=' + RECAPTCHA_SITE_KEY;
-        document.head.appendChild(script);
+        if (window.grecaptcha && typeof window.grecaptcha.execute === 'function') {
+            return Promise.resolve();
+        }
+
+        if (recaptchaLoadPromise) {
+            return recaptchaLoadPromise;
+        }
+
+        const primaryUrl = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(RECAPTCHA_SITE_KEY || '');
+        const fallbackUrl = 'https://www.recaptcha.net/recaptcha/api.js?render=' + encodeURIComponent(RECAPTCHA_SITE_KEY || '');
+
+        recaptchaLoadPromise = loadRecaptchaScript(primaryUrl)
+            .catch(function () {
+                return loadRecaptchaScript(fallbackUrl);
+            })
+            .catch(function () {
+                throw new Error('Unable to load reCAPTCHA script from all known hosts');
+            })
+            .catch(function (err) {
+                // Allow retry on the next user interaction/submit after a transient failure.
+                recaptchaLoadPromise = null;
+                throw err;
+            });
+
+        return recaptchaLoadPromise;
     }
 
     function getBrowserInfo() {
@@ -37,7 +73,7 @@
     const form = document.getElementById('page-feedback-form');
     const details = document.getElementById('page-feedback-details');
     const label = document.getElementById('pageFeedbackCommentLabel');
-    const radios = form.querySelectorAll('input[name="data.useful"]');
+    const radios = form.querySelectorAll('input[name="feedback-satisfaction"]');
     const success = document.getElementById('page-feedback-success');
     const error = document.getElementById('page-feedback-error');
     const submitButton = document.getElementById('page-feedback-submit');
@@ -62,12 +98,14 @@
 
     radios.forEach(function (radio) {
         radio.addEventListener('change', function () {
-            loadRecaptcha();
+            loadRecaptcha().catch(function (err) {
+                console.error('reCAPTCHA preload error:', err);
+            });
             details.hidden = false;
-            if (radio.value === 'yes') {
+            if (radio.id === 'feedback-useful-yes') {
                 label.textContent = 'What worked well for you (optional)';
             }
-            if (radio.value === 'no') {
+            if (radio.id === 'feedback-useful-no') {
                 label.textContent = 'What didn’t work for you (optional)';
             }
         });
@@ -85,28 +123,39 @@
         }
 
         setButtonLoading(true);
-        grecaptcha.ready(function () {
-            grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'feedback' })
+        loadRecaptcha()
+            .then(function () {
+                return new Promise(function (resolve, reject) {
+                    if (!window.grecaptcha || typeof window.grecaptcha.ready !== 'function') {
+                        reject(new Error('reCAPTCHA is not available'));
+                        return;
+                    }
+                    window.grecaptcha.ready(resolve);
+                });
+            })
+            .then(function () {
+                return window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'feedback' });
+            })
                 .then(function (token) {
-                    const usefulRadio = form.querySelector('input[name="data.useful"]:checked');
+                    const satisfactionRadio = form.querySelector('input[name="feedback-satisfaction"]:checked');
                     const tzOffset = -new Date().getTimezoneOffset();
                     const payload = {
                         data: {
-                            'useful':           usefulRadio ? usefulRadio.value : '',
-                            'feedback-a':       fieldValue('data.feedback-a'),
-                            'feedback-b':       fieldValue('data.feedback-b'),
-                            'feedback-c':       fieldValue('data.feedback-c'),
-                            'feedback-d':       fieldValue('data.feedback-d'),
-                            'dataset-owner':    fieldValue('data.dataset-owner'),
+                            'feedback-satisfaction': satisfactionRadio ? satisfactionRadio.value : '',
+                            'feedback-a':       fieldValue('feedback-a'),
+                            'feedback-b':       fieldValue('feedback-b'),
+                            'feedback-c':       fieldValue('feedback-c'),
+                            'feedback-d':       fieldValue('feedback-d'),
+                            'dataset-owner':    fieldValue('dataset-owner'),
                             'page-title':       document.getElementById('data-page-title').value,
                             'page-url':         document.getElementById('data-page-url').value,
                             'page-referer':     document.getElementById('data-page-referer').value,
                             'rspUsrAgent':      navigator.userAgent,
                             'browserName':      getBrowserInfo(),
                             'OS':               getOS(),
-                            'franchise':        fieldValue('data.franchise'),
-                            'captchaCatch':     fieldValue('data.captchaCatch'),
-                            'captcha-honeypot': fieldValue('data.captcha'),
+                            'franchise':        fieldValue('franchise'),
+                            'captchaCatch':     fieldValue('captchaCatch'),
+                            'captcha-honeypot': fieldValue('captcha'),
                             'feedback-captcha': fieldValue('feedback-captcha'),
                             'comments':         document.getElementById('pageFeedbackComment').value,
                             'submit':           true,
@@ -151,6 +200,5 @@
                     error.hidden = false;
                     error.removeAttribute('hidden');
                 });
-        });
     });
 })();
