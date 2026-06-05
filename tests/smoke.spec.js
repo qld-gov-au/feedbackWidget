@@ -151,6 +151,7 @@ test('submits feedback to the test endpoint and shows success', async ({ page },
   expect(payload.data.OS).toBe(getExpectedOSForProject(testInfo.project.name));
   expect(payload.data.comments).toContain(smokeData.feedbackPrefix);
   expect(payload.data.captchaCatch).toBe('dev');
+  expect(payload.data['g-recaptcha-response']).toBeTruthy();
 
   await expect(page.locator('#page-feedback-form')).toBeHidden();
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
@@ -262,7 +263,7 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
   const request = await requestPromise;
   const payload = JSON.parse(request.postData());
 
-  expect(payload.data.captcha.token).toBe('delayed-test-token');
+  expect(payload.data['g-recaptcha-response']).toBe('delayed-test-token');
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
   await expect(page.locator('#page-feedback-error')).toBeHidden();
 });

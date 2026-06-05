@@ -169,11 +169,12 @@
                             'OS':               getOS(),
                             'franchise':        resolveFranchise(),
                             'captchaCatch':     BUILD_ENV,
+                            'captcha':          '',
                             'captcha-honeypot': fieldValue('captcha'),
                             'feedback-captcha': fieldValue('feedback-captcha'),
+                            'g-recaptcha-response': token,
                             'comments':         commentsText || '[no comment provided]',
                             'submit':           true,
-                            'captcha':          { token: token }
                         },
                         metadata: {
                             timezone:    Intl.DateTimeFormat().resolvedOptions().timeZone,
