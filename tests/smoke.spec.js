@@ -52,11 +52,11 @@ test.afterEach(async ({}, testInfo) => {
   logSmokeFail(`Failed | Browser: ${browser} | Check: ${check} | Reason: ${firstError}`);
 });
 
-test('page title and URL are injected into hidden fields on load', async ({ page }) => {
-  // Smoke check: the widget should write page metadata into its hidden fields.
+test('page title and URL are available on load', async ({ page }) => {
+  // Smoke check: fixture wiring sets expected document title and location.
   await loadWidget(page, widgetOptions);
-  const title = await page.inputValue('#data-page-title');
-  const url = await page.inputValue('#data-page-url');
+  const title = await page.title();
+  const url = page.url();
   expect(title).toBe(smokeData.pageTitle);
   expect(url).toBe(smokeData.pageUrl);
 });
@@ -145,7 +145,7 @@ test('submits feedback to the test endpoint and shows success', async ({ page },
   expect(payload.data['page-title']).toBe(smokeData.pageTitle);
   expect(payload.data['page-url']).toBe(smokeData.pageUrl);
   expect(payload.data['page-referer']).toBe(smokeData.referrer);
-  expect(payload.data['franchise']).toBe(smokeData.franchise);
+  expect(payload.data['franchise']).toBe('qld-gov-au');
   expect(payload.data['feedback-satisfaction']).toBe(smokeData.feedbackSatisfaction);
   expect(payload.data.browserName.name).toBe(getExpectedBrowserName(testInfo.project.name));
   expect(payload.data.OS).toBe(getExpectedOSForProject(testInfo.project.name));

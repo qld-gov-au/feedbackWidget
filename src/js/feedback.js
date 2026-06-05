@@ -1,5 +1,6 @@
 (function () {
     const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA;
+    const BUILD_ENV = process.env.BUILD_ENV;
     let recaptchaLoadPromise = null;
 
     function loadRecaptchaScript(url) {
@@ -75,14 +76,6 @@
         if (explicitFranchise) {
             return explicitFranchise;
         }
-        const sweFranchise = window.qg
-            && window.qg.swe
-            && typeof window.qg.swe.franchiseTitle === 'string'
-            ? window.qg.swe.franchiseTitle.trim()
-            : '';
-        if (sweFranchise) {
-            return sweFranchise;
-        }
         const hostOverrides = {
             'www.business.qld.gov.au': 'Business Queensland',
             'www.familywellbeingqld.org.au': 'Aboriginal and Torres Strait Islander Family Wellbeing Services',
@@ -115,10 +108,6 @@
             submitButton.innerHTML = submitButtonDefault;
         }
     }
-
-    document.getElementById('data-page-title').value = document.title;
-    document.getElementById('data-page-url').value = window.location.href;
-    document.getElementById('data-page-referer').value = document.referrer;
 
     radios.forEach(function (radio) {
         radio.addEventListener('change', function () {
@@ -171,14 +160,14 @@
                             'feedback-c':       fieldValue('feedback-c'),
                             'feedback-d':       fieldValue('feedback-d'),
                             'dataset-owner':    fieldValue('dataset-owner'),
-                            'page-title':       document.getElementById('data-page-title').value,
-                            'page-url':         document.getElementById('data-page-url').value,
-                            'page-referer':     document.getElementById('data-page-referer').value,
+                            'page-title':       document.title,
+                            'page-url':         window.location.href,
+                            'page-referer':     document.referrer,
                             'rspUsrAgent':      navigator.userAgent,
                             'browserName':      getBrowserInfo(),
                             'OS':               getOS(),
                             'franchise':        resolveFranchise(),
-                            'captchaCatch':     fieldValue('captchaCatch'),
+                            'captchaCatch':     BUILD_ENV,
                             'captcha-honeypot': fieldValue('captcha'),
                             'feedback-captcha': fieldValue('feedback-captcha'),
                             'comments':         document.getElementById('pageFeedbackComment').value,

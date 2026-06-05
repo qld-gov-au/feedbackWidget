@@ -3,17 +3,7 @@
   method="post"
   id="page-feedback-form"
 >
-  <!-- Metadata fields populated by JS -->
-  <input type="hidden" name="page-title" id="data-page-title" />
-  <input type="hidden" name="page-url" id="data-page-url" />
-  <input type="hidden" name="page-referer" id="data-page-referer" />
-
   <!-- Static environment fields -->
-  <input type="hidden" name="franchise" value="" />
-  <!-- Use "dev" for staging/test, "prod" for production -->
-  <input type="hidden" name="captchaCatch" value="__BUILD_ENV__" />
-
-  <!-- Honeypot fields: hidden from users, visible to bots -->
   <div style="display: none" aria-hidden="true">
     <input
       type="text"

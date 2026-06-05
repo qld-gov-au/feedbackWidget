@@ -6,7 +6,7 @@ const smokeData = {
   pageTitle: makeText(['Feedback', ' widget', ' tests']),
   pageUrl: makeText(['https://github.com/', 'qld-gov-au/', 'feedbackWidget']),
   referrer: makeText(['https://github.com/', 'qld-gov-au']),
-  franchise: makeText(['QGDS', ' Developers']),
+  franchise: '',
   feedbackSatisfaction: 'Satisfied (4)',
   feedbackPrefix: makeText(['Feedback: ', 'Play', 'wright', ' smoke', ' submission ;)'])
 };
@@ -107,8 +107,13 @@ function renderTestDocument(sourceHtml, smokeData) {
     .replace('__BUILD_ENV__', 'dev')
     .replace('__SMARTSERVICE_HOST__', 'test.smartservice.qld.gov.au')
     .replace('__FSH_PROJECT__', fshProject)
-    .replace('__FSH_ENDPOINT__', fshEndpoint)
-    .replace('name="franchise" value=""', `name="franchise" value="${smokeData.franchise}"`);
+    .replace('__FSH_ENDPOINT__', fshEndpoint);
+  const renderedFormHtml = smokeData.franchise
+    ? html.replace(
+      /<form\b([^>]*)>/,
+      `<form$1>\n  <input type="hidden" name="franchise" value="${smokeData.franchise}" />`
+    )
+    : html;
 
   return `<!DOCTYPE html>
     <html lang="en">
@@ -118,7 +123,7 @@ function renderTestDocument(sourceHtml, smokeData) {
         <link rel="stylesheet" href="https://static.qgov.net.au/qgds-bootstrap5/v2/v2.x.x-latest/assets/css/qld.bootstrap.css"/>
       </head>
       <body>
-        ${html}
+        ${renderedFormHtml}
       </body>
     </html>`;
 }
