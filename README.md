@@ -63,7 +63,7 @@ Copy these two files into your CMS.
 
 ## How it works
 
-1. On page load the JS populates hidden fields with `document.title`, `window.location.href`, and `document.referrer`
+1. On page load the widget is ready to collect page metadata directly from `document` and `window`
 2. The user selects Yes or No, optionally enters a comment, and submits
 3. The JS wraps all fields under a `data[...]` parent and posts to the Smart Service submissions endpoint as `application/json`
 4. The FreeMarker template on the server reads the submitted fields, checks for spam, and routes the email to the appropriate team based on URL, referrer, or franchise
@@ -142,7 +142,7 @@ Notes:
 
 ## JavaScript (`src/js/feedback.js`)
 
-The script is wrapped in an IIFE and has no external dependencies beyond the Google reCAPTCHA v3 API. On load it writes `document.title`, `window.location.href`, and `document.referrer` into the form's hidden fields. The reCAPTCHA script is lazy-loaded the first time the user interacts with a Yes/No radio button, avoiding an unnecessary network request on pages where the form is never used. When a radio is selected the comment section is revealed and the comment label updates dynamically to match the chosen sentiment ("What worked well for you" vs "What didn't work for you"). On submit the script validates the form natively via `checkValidity()`, disables the submit button to prevent double-submission, then calls `grecaptcha.execute()` to obtain a token. That token is appended to a `FormData` object and the whole payload is sent via `fetch`. A successful `2xx` response hides the form and shows the success message; any network or HTTP error re-enables the submit button and reveals the error message. The `process.env.RECAPTCHA` and `process.env.BUILD_ENV` references are replaced with literal values at build time by esbuild, so no environment variables are present in the deployed output.
+The script is wrapped in an IIFE and has no external dependencies beyond the Google reCAPTCHA v3 API. It reads page metadata directly from `document` and `window` when building the submission payload. The reCAPTCHA script is lazy-loaded the first time the user interacts with a Yes/No radio button, avoiding an unnecessary network request on pages where the form is never used. When a radio is selected the comment section is revealed and the comment label updates dynamically to match the chosen sentiment ("What worked well for you" vs "What didn't work for you"). On submit the script validates the form natively via `checkValidity()`, disables the submit button to prevent double-submission, then calls `grecaptcha.execute()` to obtain a token. The payload is then sent via `fetch` as JSON. A successful `2xx` response hides the form and shows the success message; any network or HTTP error re-enables the submit button and reveals the error message. The `process.env.RECAPTCHA` and `process.env.BUILD_ENV` references are replaced with literal values at build time by esbuild, so no environment variables are present in the deployed output.
 
 ## Payload shape
 
@@ -153,10 +153,21 @@ data[page-referer]=...
 data[franchise]=...
 data[captchaCatch]=dev|prod
 data[captcha]=
+data[g-recaptcha-response]=<token>
 data[feedback-satisfaction]=Satisfied (4)|Dissatisfied (2)
 data[comments]=...
 feedback-captcha=
 ```
+
+### Compatibility fields
+
+Some payload keys are still sent for server-side compatibility even though there is no corresponding visible field in the shipped HTML:
+
+- `data[captcha]` is deliberately sent as an empty string because the current FreeMarker spam logic still checks that legacy key.
+- `data[g-recaptcha-response]` carries the real Google reCAPTCHA token in a legacy-compatible location.
+- FreeMarker is the source of truth for template keys. In this repository's template example, keys are read from flattened `data.*` and `metadata.*` paths.
+- `feedback-captcha` is sent under `data[feedback-captcha]` only.
+- `data[feedback-a]`, `data[feedback-b]`, `data[feedback-c]`, `data[feedback-d]`, and `data[dataset-owner]` remain in the payload as compatibility placeholders and default to empty strings unless another surface injects them.
 
 ## Email routing logic
 

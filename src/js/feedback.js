@@ -71,6 +71,13 @@
         return el ? el.value : '';
     }
 
+    function setFieldValue(name, value) {
+        const el = form.querySelector('[name="' + name + '"]');
+        if (el) {
+            el.value = value;
+        }
+    }
+
     function resolveFranchise() {
         const explicitFranchise = fieldValue('franchise').trim();
         if (explicitFranchise) {
@@ -153,9 +160,13 @@
                     const satisfactionRadio = form.querySelector('input[name="feedback-satisfaction"]:checked');
                     const tzOffset = -new Date().getTimezoneOffset();
                     const commentsText = document.getElementById('pageFeedbackComment').value.trim();
+                    const franchise = resolveFranchise();
+                    setFieldValue('captchaCatch', BUILD_ENV);
+                    setFieldValue('g-recaptcha-response', token);
+                    setFieldValue('franchise', franchise);
                     const payload = {
                         data: {
-                            'feedback-satisfaction': satisfactionRadio ? satisfactionRadio.value : '',
+                            'feedback-satisfaction': satisfactionRadio,
                             'feedback-a':       fieldValue('feedback-a'),
                             'feedback-b':       fieldValue('feedback-b'),
                             'feedback-c':       fieldValue('feedback-c'),
@@ -167,7 +178,7 @@
                             'rspUsrAgent':      navigator.userAgent,
                             'browserName':      getBrowserInfo(),
                             'OS':               getOS(),
-                            'franchise':        resolveFranchise(),
+                            'franchise':        franchise,
                             'captchaCatch':     BUILD_ENV,
                             'captcha':          '',
                             'captcha-honeypot': fieldValue('captcha'),
@@ -177,10 +188,11 @@
                             'submit':           true,
                         },
                         metadata: {
+                            timestamp:   new Date().toISOString(),
                             timezone:    Intl.DateTimeFormat().resolvedOptions().timeZone,
                             offset:      tzOffset,
                             origin:      window.location.origin,
-                            referrer:    document.referrer,
+                            referrer:    document.referrer || '[no referrer captured]',
                             browserName: navigator.appName,
                             userAgent:   navigator.userAgent,
                             pathName:    window.location.pathname,

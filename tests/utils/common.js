@@ -8,7 +8,7 @@ const smokeData = {
   referrer: makeText(['https://github.com/', 'qld-gov-au']),
   franchise: '',
   feedbackSatisfaction: 'Satisfied (4)',
-  feedbackPrefix: makeText(['Feedback: ', 'Play', 'wright', ' smoke', ' submission ;)'])
+  feedbackPrefix: makeText(['Play', 'wright', ' smoke', ' submission ;)'])
 };
 
 function getBuildSource() {
@@ -109,10 +109,9 @@ function renderTestDocument(sourceHtml, smokeData) {
     .replace('__FSH_PROJECT__', fshProject)
     .replace('__FSH_ENDPOINT__', fshEndpoint);
   const renderedFormHtml = smokeData.franchise
-    ? html.replace(
-      /<form\b([^>]*)>/,
-      `<form$1>\n  <input type="hidden" name="franchise" value="${smokeData.franchise}" />`
-    )
+    ? html.replace(/(<input[^>]*name="franchise"[^>]*\bvalue=")[^"]*(")/, function (_, start, end) {
+      return start + smokeData.franchise + end;
+    })
     : html;
 
   return `<!DOCTYPE html>

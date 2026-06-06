@@ -151,6 +151,7 @@ test('submits feedback to the test endpoint and shows success', async ({ page },
   expect(payload.data.OS).toBe(getExpectedOSForProject(testInfo.project.name));
   expect(payload.data.comments).toContain(smokeData.feedbackPrefix);
   expect(payload.data.captchaCatch).toBe('dev');
+  expect(payload.data['feedback-captcha']).toBe('');
   expect(payload.data['g-recaptcha-response']).toBeTruthy();
 
   await expect(page.locator('#page-feedback-form')).toBeHidden();
