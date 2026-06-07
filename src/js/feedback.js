@@ -158,6 +158,7 @@
             })
                 .then(function (token) {
                     const satisfactionRadio = form.querySelector('input[name="feedback-satisfaction"]:checked');
+                    const satisfactionValue = satisfactionRadio ? satisfactionRadio.value : '';
                     const tzOffset = -new Date().getTimezoneOffset();
                     const commentsText = document.getElementById('pageFeedbackComment').value.trim();
                     const franchise = resolveFranchise();
@@ -166,7 +167,7 @@
                     setFieldValue('franchise', franchise);
                     const payload = {
                         data: {
-                            'feedback-satisfaction': satisfactionRadio,
+                            'feedback-satisfaction': satisfactionValue,
                             'feedback-a':       fieldValue('feedback-a'),
                             'feedback-b':       fieldValue('feedback-b'),
                             'feedback-c':       fieldValue('feedback-c'),
