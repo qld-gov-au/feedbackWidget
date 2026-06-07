@@ -3,14 +3,13 @@
   "version": "4.0.1",
   "private": true,
   "scripts": {
-    "build:dev": "cross-env BUILD_ENV=dev node --env-file=.env build.mjs",
-    "build:prod": "cross-env BUILD_ENV=prod node --env-file=.env build.mjs",
+    "build:dev": "node --env-file=.env build.mjs dev",
+    "build:prod": "node --env-file=.env build.mjs prod",
     "test": "node --env-file=.env ./node_modules/.bin/playwright test",
     "test:browserstack": "node --env-file=.env ./node_modules/.bin/playwright test -c playwright.browserstack.config.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
-    "cross-env": "^10.1.0",
     "esbuild": "^0.25.0"
   }
 }

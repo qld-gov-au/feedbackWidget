@@ -14,7 +14,9 @@ const {
   getSubmissionFeedback,
   getExpectedBrowserName,
   getExpectedOSForProject,
-  logPayload,
+  logSmokeInfo,
+  logSmokePass,
+  logSmokeFail,
   loadWidget
 } = require('./utils/common');
 
@@ -26,6 +28,7 @@ const fshProject = process.env.FSH_PROJECT;
 const fshEndpoint = process.env.FSH_ENDPOINT;
 const submitPathFragment = '/services/submissions/email/' + fshProject + '/' + fshEndpoint;
 const submitPathRoutePattern = '**' + submitPathFragment;
+
 const widgetOptions = {
   builtScriptPath,
   realRecaptchaSiteKey,
@@ -34,11 +37,26 @@ const widgetOptions = {
   useRealRecaptcha,
 };
 
-test('page title and URL are injected into hidden fields on load', async ({ page }) => {
-  // Smoke check: the widget should write page metadata into its hidden fields.
+test.afterEach(async ({}, testInfo) => {
+  const browser = testInfo.project.name;
+  const check = testInfo.title;
+
+  if (testInfo.status === testInfo.expectedStatus) {
+    logSmokePass(`Passed | Browser: ${browser} | Check: ${check}`);
+    return;
+  }
+
+  const firstError = testInfo.errors && testInfo.errors.length > 0 && testInfo.errors[0].message
+    ? testInfo.errors[0].message.split('\n')[0]
+    : 'no error message captured';
+  logSmokeFail(`Failed | Browser: ${browser} | Check: ${check} | Reason: ${firstError}`);
+});
+
+test('page title and URL are available on load', async ({ page }) => {
+  // Smoke check: fixture wiring sets expected document title and location.
   await loadWidget(page, widgetOptions);
-  const title = await page.inputValue('#data-page-title');
-  const url = await page.inputValue('#data-page-url');
+  const title = await page.title();
+  const url = page.url();
   expect(title).toBe(smokeData.pageTitle);
   expect(url).toBe(smokeData.pageUrl);
 });
@@ -100,7 +118,6 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   await page.click('#page-feedback-submit');
   const request = await requestPromise;
   const payload = JSON.parse(request.postData());
-  logPayload('failed submission', payload);
 
   await expect(page.locator('#page-feedback-form')).toBeHidden();
   await expect(page.locator('#page-feedback-success')).toBeHidden();
@@ -124,21 +141,100 @@ test('submits feedback to the test endpoint and shows success', async ({ page },
 
   const request = await requestPromise;
   const payload = JSON.parse(request.postData());
-  logPayload('successful submission', payload);
 
   expect(payload.data['page-title']).toBe(smokeData.pageTitle);
   expect(payload.data['page-url']).toBe(smokeData.pageUrl);
   expect(payload.data['page-referer']).toBe(smokeData.referrer);
-  expect(payload.data['franchise']).toBe(smokeData.franchise);
+  expect(payload.data['franchise']).toBe('qld-gov-au');
   expect(payload.data['feedback-satisfaction']).toBe(smokeData.feedbackSatisfaction);
   expect(payload.data.browserName.name).toBe(getExpectedBrowserName(testInfo.project.name));
   expect(payload.data.OS).toBe(getExpectedOSForProject(testInfo.project.name));
   expect(payload.data.comments).toContain(smokeData.feedbackPrefix);
   expect(payload.data.captchaCatch).toBe('dev');
+  expect(payload.data['feedback-captcha']).toBe('');
+  expect(payload.data['g-recaptcha-response']).toBeTruthy();
 
   await expect(page.locator('#page-feedback-form')).toBeHidden();
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
   await expect(page.locator('#page-feedback-error')).toBeHidden();
+});
+
+test('uses injected hidden franchise field when present', async ({ page }) => {
+  const injectedFranchise = 'Injected Franchise Value';
+  const franchiseSmokeData = {
+    ...smokeData,
+    pageUrl: 'https://example.qld.gov.au/custom-franchise-page',
+    referrer: 'https://example.qld.gov.au',
+    franchise: injectedFranchise,
+  };
+
+  await loadWidget(page, {
+    ...widgetOptions,
+    smokeData: franchiseSmokeData,
+  });
+  await page.route(submitPathRoutePattern, async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true })
+    });
+  });
+
+  await page.click('#feedback-useful-yes');
+  const requestPromise = page.waitForRequest(function (request) {
+    return request.url().includes(submitPathFragment) && request.method() === 'POST';
+  });
+  await page.click('#page-feedback-submit');
+
+  const request = await requestPromise;
+  const payload = JSON.parse(request.postData());
+  logSmokeInfo(
+    `Franchise check (injected field): expected "${injectedFranchise}", got "${payload.data.franchise}"`
+  );
+  expect(payload.data.franchise).toBe(injectedFranchise);
+});
+
+test('uses hostname overrides when franchise field is empty', async ({ page }) => {
+  const franchiseOverrideCases = [
+    { pageUrl: 'https://www.forgov.qld.gov.au/policies/leave', expected: 'Government employees' },
+    { pageUrl: 'https://www.business.qld.gov.au/grants', expected: 'Business Queensland' },
+  ];
+
+  for (const franchiseCase of franchiseOverrideCases) {
+    const caseSmokeData = {
+      ...smokeData,
+      pageUrl: franchiseCase.pageUrl,
+      referrer: franchiseCase.pageUrl,
+      franchise: '',
+    };
+
+    await loadWidget(page, {
+      ...widgetOptions,
+      smokeData: caseSmokeData,
+    });
+    await page.route(submitPathRoutePattern, async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true })
+      });
+    });
+
+    await page.click('#feedback-useful-yes');
+    const requestPromise = page.waitForRequest(function (request) {
+      return request.url().includes(submitPathFragment) && request.method() === 'POST';
+    });
+    await page.click('#page-feedback-submit');
+
+    const request = await requestPromise;
+    const payload = JSON.parse(request.postData());
+    logSmokeInfo(
+      `Franchise check (hostname override: ${new URL(franchiseCase.pageUrl).hostname}): expected "${franchiseCase.expected}", got "${payload.data.franchise}"`
+    );
+    expect(payload.data.franchise).toBe(franchiseCase.expected);
+
+    await page.unroute(submitPathRoutePattern);
+  }
 });
 
 test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) => {
@@ -167,9 +263,8 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
   await page.click('#page-feedback-submit');
   const request = await requestPromise;
   const payload = JSON.parse(request.postData());
-  logPayload('delayed recaptcha submission', payload);
 
-  expect(payload.data.captcha.token).toBe('delayed-test-token');
+  expect(payload.data['g-recaptcha-response']).toBe('delayed-test-token');
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
   await expect(page.locator('#page-feedback-error')).toBeHidden();
 });

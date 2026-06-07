@@ -1,5 +1,6 @@
 (function () {
     const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA;
+    const BUILD_ENV = process.env.BUILD_ENV;
     let recaptchaLoadPromise = null;
 
     function loadRecaptchaScript(url) {
@@ -70,6 +71,29 @@
         return el ? el.value : '';
     }
 
+    function setFieldValue(name, value) {
+        const el = form.querySelector('[name="' + name + '"]');
+        if (el) {
+            el.value = value;
+        }
+    }
+
+    function resolveFranchise() {
+        const explicitFranchise = fieldValue('franchise').trim();
+        if (explicitFranchise) {
+            return explicitFranchise;
+        }
+        const hostOverrides = {
+            'www.business.qld.gov.au': 'Business Queensland',
+            'www.familywellbeingqld.org.au': 'Aboriginal and Torres Strait Islander Family Wellbeing Services',
+            'www.forgov.qld.gov.au': 'Government employees'
+        };
+        if (hostOverrides[window.location.hostname]) {
+            return hostOverrides[window.location.hostname];
+        }
+        return window.location.pathname.split('/').filter(Boolean)[0] || '';
+    }
+
     const form = document.getElementById('page-feedback-form');
     const details = document.getElementById('page-feedback-details');
     const label = document.getElementById('pageFeedbackCommentLabel');
@@ -91,10 +115,6 @@
             submitButton.innerHTML = submitButtonDefault;
         }
     }
-
-    document.getElementById('data-page-title').value = document.title;
-    document.getElementById('data-page-url').value = window.location.href;
-    document.getElementById('data-page-referer').value = document.referrer;
 
     radios.forEach(function (radio) {
         radio.addEventListener('change', function () {
@@ -138,34 +158,42 @@
             })
                 .then(function (token) {
                     const satisfactionRadio = form.querySelector('input[name="feedback-satisfaction"]:checked');
+                    const satisfactionValue = satisfactionRadio ? satisfactionRadio.value : '';
                     const tzOffset = -new Date().getTimezoneOffset();
+                    const commentsText = document.getElementById('pageFeedbackComment').value.trim();
+                    const franchise = resolveFranchise();
+                    setFieldValue('captchaCatch', BUILD_ENV);
+                    setFieldValue('g-recaptcha-response', token);
+                    setFieldValue('franchise', franchise);
                     const payload = {
                         data: {
-                            'feedback-satisfaction': satisfactionRadio ? satisfactionRadio.value : '',
+                            'feedback-satisfaction': satisfactionValue,
                             'feedback-a':       fieldValue('feedback-a'),
                             'feedback-b':       fieldValue('feedback-b'),
                             'feedback-c':       fieldValue('feedback-c'),
                             'feedback-d':       fieldValue('feedback-d'),
                             'dataset-owner':    fieldValue('dataset-owner'),
-                            'page-title':       document.getElementById('data-page-title').value,
-                            'page-url':         document.getElementById('data-page-url').value,
-                            'page-referer':     document.getElementById('data-page-referer').value,
+                            'page-title':       document.title,
+                            'page-url':         window.location.href,
+                            'page-referer':     document.referrer,
                             'rspUsrAgent':      navigator.userAgent,
                             'browserName':      getBrowserInfo(),
                             'OS':               getOS(),
-                            'franchise':        fieldValue('franchise'),
-                            'captchaCatch':     fieldValue('captchaCatch'),
+                            'franchise':        franchise,
+                            'captchaCatch':     BUILD_ENV,
+                            'captcha':          '',
                             'captcha-honeypot': fieldValue('captcha'),
                             'feedback-captcha': fieldValue('feedback-captcha'),
-                            'comments':         document.getElementById('pageFeedbackComment').value,
+                            'g-recaptcha-response': token,
+                            'comments':         commentsText || '[no comment provided]',
                             'submit':           true,
-                            'captcha':          { token: token }
                         },
                         metadata: {
+                            timestamp:   new Date().toISOString(),
                             timezone:    Intl.DateTimeFormat().resolvedOptions().timeZone,
                             offset:      tzOffset,
                             origin:      window.location.origin,
-                            referrer:    document.referrer,
+                            referrer:    document.referrer || '[no referrer captured]',
                             browserName: navigator.appName,
                             userAgent:   navigator.userAgent,
                             pathName:    window.location.pathname,

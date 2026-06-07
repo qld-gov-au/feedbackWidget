@@ -6,9 +6,9 @@ const smokeData = {
   pageTitle: makeText(['Feedback', ' widget', ' tests']),
   pageUrl: makeText(['https://github.com/', 'qld-gov-au/', 'feedbackWidget']),
   referrer: makeText(['https://github.com/', 'qld-gov-au']),
-  franchise: makeText(['QGDS', ' Developers']),
+  franchise: '',
   feedbackSatisfaction: 'Satisfied (4)',
-  feedbackPrefix: makeText(['Feedback: ', 'Play', 'wright', ' smoke', ' submission ;)'])
+  feedbackPrefix: makeText(['Play', 'wright', ' smoke', ' submission ;)'])
 };
 
 function getBuildSource() {
@@ -37,6 +37,38 @@ async function getRunnerIp() {
 function logPayload(label, payload) {
   console.log(`\n[smoke] ${label} payload:`);
   console.log(JSON.stringify(payload, null, 2));
+}
+
+function isGithubActions() {
+  return process.env.GITHUB_ACTIONS === 'true';
+}
+
+function formatSmokeLog(level, message) {
+  return `Smoke Check | ${level} | ${message}`;
+}
+
+function logSmokeInfo(message) {
+  const line = formatSmokeLog('INFO', message);
+  console.log(line);
+  if (isGithubActions()) {
+    console.log(`::notice title=Smoke Check::${line}`);
+  }
+}
+
+function logSmokePass(message) {
+  const line = formatSmokeLog('PASS', message);
+  console.log(line);
+  if (isGithubActions()) {
+    console.log(`::notice title=Smoke Check::${line}`);
+  }
+}
+
+function logSmokeFail(message) {
+  const line = formatSmokeLog('FAIL', message);
+  console.log(line);
+  if (isGithubActions()) {
+    console.log(`::error title=Smoke Check::${line}`);
+  }
 }
 
 function getExpectedOS() {
@@ -75,8 +107,12 @@ function renderTestDocument(sourceHtml, smokeData) {
     .replace('__BUILD_ENV__', 'dev')
     .replace('__SMARTSERVICE_HOST__', 'test.smartservice.qld.gov.au')
     .replace('__FSH_PROJECT__', fshProject)
-    .replace('__FSH_ENDPOINT__', fshEndpoint)
-    .replace('name="franchise" value=""', `name="franchise" value="${smokeData.franchise}"`);
+    .replace('__FSH_ENDPOINT__', fshEndpoint);
+  const renderedFormHtml = smokeData.franchise
+    ? html.replace(/(<input[^>]*name="franchise"[^>]*\bvalue=")[^"]*(")/, function (_, start, end) {
+      return start + smokeData.franchise + end;
+    })
+    : html;
 
   return `<!DOCTYPE html>
     <html lang="en">
@@ -86,7 +122,7 @@ function renderTestDocument(sourceHtml, smokeData) {
         <link rel="stylesheet" href="https://static.qgov.net.au/qgds-bootstrap5/v2/v2.x.x-latest/assets/css/qld.bootstrap.css"/>
       </head>
       <body>
-        ${html}
+        ${renderedFormHtml}
       </body>
     </html>`;
 }
@@ -176,6 +212,9 @@ module.exports = {
   getRunnerIp,
   getSubmissionFeedback,
   logPayload,
+  logSmokeInfo,
+  logSmokePass,
+  logSmokeFail,
   getExpectedOS,
   getExpectedBrowserName,
   getExpectedOSForProject,

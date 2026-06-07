@@ -9,7 +9,7 @@ function minifyHtml(html) {
 }
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 
-const env = process.env.BUILD_ENV || 'dev';
+const env = process.argv[2] || process.env.BUILD_ENV || 'dev';
 if (env !== 'dev' && env !== 'prod') {
     console.error('Error: BUILD_ENV must be "dev" or "prod".');
     process.exit(1);
@@ -47,9 +47,8 @@ await esbuild.build({
 
 console.log('Built: dist/feedback.min.js');
 
-// --- HTML: minify + inject BUILD_ENV into captchaCatch ---
+// --- HTML: minify + inject host and endpoint placeholders ---
 const rawHtml = readFileSync('src/html/index.html', 'utf8')
-    .replace('__BUILD_ENV__', env)
     .replace('__SMARTSERVICE_HOST__', smartserviceHost)
     .replace('__FSH_PROJECT__', fshProject)
     .replace('__FSH_ENDPOINT__', fshEndpoint);
