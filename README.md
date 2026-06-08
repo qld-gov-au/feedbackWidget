@@ -1,5 +1,7 @@
 # Footer feedback widget
 
+This is a prototype and is not production ready.
+
 A lightweight page feedback component for Queensland Government websites. Collects a yes/no helpfulness response and optional comments, then submits to the Smart Service QLD feedback endpoint.
 
 ## Structure
@@ -85,7 +87,7 @@ Copy these two files into your CMS.
 1. On page load the widget is ready to collect page metadata directly from `document` and `window`
 2. The user selects Yes or No, optionally enters a comment, and submits
 3. The JS wraps all fields under a `data[...]` parent and posts to the Smart Service submissions endpoint as `application/json`
-4. The FreeMarker template on the server reads the submitted fields, checks for spam, and routes the email to the appropriate team based on URL, referrer, or franchise
+4. The server reads the submitted fields, checks for spam, and routes the email to the appropriate team based on URL, referrer, or franchise
 
 ## Smoke Tests
 
@@ -175,19 +177,9 @@ data[comments]=...
 data[feedback-captcha]=
 ```
 
-### Compatibility fields
-
-Some payload keys are still sent for server-side compatibility even though there is no corresponding visible field in the shipped HTML:
-
-- `data[captcha]` is deliberately sent as an empty string because the current FreeMarker spam logic still checks that legacy key.
-- `data[g-recaptcha-response]` carries the real Google reCAPTCHA token in a legacy-compatible location.
-- FreeMarker is the source of truth for template keys. In this repository's template example, keys are read from flattened `data.*` and `metadata.*` paths.
-- `feedback-captcha` is sent under `data[feedback-captcha]` only.
-- `data[feedback-a]`, `data[feedback-b]`, `data[feedback-c]`, `data[feedback-d]`, and `data[dataset-owner]` remain in the payload as compatibility placeholders and default to empty strings unless another surface injects them.
-
 ## Email routing logic
 
-Email routing is managed via FreeMarker templates on the server and is not documented in this repository.
+Email routing is managed via server and is not documented in this repository.
 For routing rules, franchise mappings, and URL patterns, refer to the internal Confluence page.
 
 ## GitHub Actions
