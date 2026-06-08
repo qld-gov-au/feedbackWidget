@@ -27,7 +27,7 @@ const realRecaptchaSiteKey = process.env.SMOKE_RECAPTCHA_SITE_KEY || process.env
 const fshProject = process.env.FSH_PROJECT;
 const fshEndpoint = process.env.FSH_ENDPOINT;
 const submitPathFragment = '/services/submissions/email/' + fshProject + '/' + fshEndpoint;
-const submitPathRoutePattern = '**' + submitPathFragment;
+const submitPathRoutePattern = '**' + submitPathFragment + '**';
 
 const widgetOptions = {
   builtScriptPath,
@@ -118,6 +118,9 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   await page.click('#page-feedback-submit');
   const request = await requestPromise;
   const payload = JSON.parse(request.postData());
+  const requestUrl = new URL(request.url());
+
+  expect(requestUrl.searchParams.get('g-recaptcha-response')).toBeTruthy();
 
   await expect(page.locator('#page-feedback-form')).toBeVisible();
   await expect(page.locator('#page-feedback-success')).toBeHidden();
@@ -272,8 +275,10 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
   await page.click('#page-feedback-submit');
   const request = await requestPromise;
   const payload = JSON.parse(request.postData());
+  const requestUrl = new URL(request.url());
 
   expect(payload.data['g-recaptcha-response']).toBe('delayed-test-token');
+  expect(requestUrl.searchParams.get('g-recaptcha-response')).toBe('delayed-test-token');
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
   await expect(page.locator('#page-feedback-error')).toBeHidden();
 });

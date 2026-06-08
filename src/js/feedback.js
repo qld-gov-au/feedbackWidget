@@ -191,7 +191,6 @@
                             'captcha':          '',
                             'captcha-honeypot': fieldValue('captcha'),
                             'feedback-captcha': fieldValue('feedback-captcha'),
-                            'g-recaptcha-response': token,
                             'comments':         commentsText || '[no comment provided]',
                             'submit':           true,
                         },
@@ -210,8 +209,11 @@
                         _vnote: ''
                     };
 
-                    fetch(form.action, {
-                        method: form.method || 'POST',
+                    const submitUrl = new URL(form.action);
+                    submitUrl.searchParams.set('g-recaptcha-response', token);
+
+                    fetch(submitUrl.toString(), {
+                        method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     })
