@@ -112,7 +112,7 @@ Example GitHub Actions step:
 ```yaml
 - name: Run smoke tests
   env:
-    SMOKE_USE_REAL_RECAPTCHA: "true"
+    SMOKE_USE_REAL_RECAPTCHA: 'true'
     SMOKE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_DEV }}
   run: npm test
 ```
