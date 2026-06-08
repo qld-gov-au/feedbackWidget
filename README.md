@@ -194,12 +194,11 @@ For routing rules, franchise mappings, and URL patterns, refer to the internal C
 
 A single workflow (`build.yml`) handles all environments. It derives the build target and release branch automatically from the triggering branch.
 
-| Trigger                      | Branch         | Build command        | Publishes to         |
-| ---------------------------- | -------------- | -------------------- | -------------------- |
-| Push                         | `feature-test` | `npm run build:dev`  | `release-dev`        |
-| Pull request → `development` | any            | `npm run build:dev`  | `release-dev`        |
-| Pull request → `uat`         | any            | `npm run build:dev`  | `release-uat`        |
-| Pull request → `main`        | any            | `npm run build:prod` | `release-production` |
+| Trigger                      | Branch | Build command        | Publishes to         |
+| ---------------------------- | ------ | -------------------- | -------------------- |
+| Pull request → `development` | any    | `npm run build:dev`  | `release-dev`        |
+| Pull request → `uat`         | any    | `npm run build:dev`  | `release-uat`        |
+| Pull request → `main`        | any    | `npm run build:prod` | `release-production` |
 
 The workflow only runs when `src/`, `build.mjs`, `package.json`, or `package-lock.json` change.
 
@@ -211,14 +210,6 @@ Each run:
 4. Injects endpoint path vars (`FSH_PROJECT`, `FSH_ENDPOINT`) from repository variables
 5. Runs Playwright smoke tests against the source HTML fragment in `src/html/index.html` with the built `dist/feedback.min.js`, including a live success path and a forced failure-path assertion
 6. Pushes only the `dist/` folder to the target release branch via a git worktree (skips the commit if nothing changed)
-
-### Triggering a dev rebuild without a pull request
-
-Push any relevant change to the `feature-test` branch. This triggers the workflow immediately and publishes to `release-dev` — no PR required. Use this for iterating on the widget during development before the work is ready to propose against `development`.
-
-```bash
-git push origin feature-test
-```
 
 ### Required repository secrets
 
