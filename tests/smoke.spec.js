@@ -119,15 +119,24 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   const request = await requestPromise;
   const payload = JSON.parse(request.postData());
 
-  await expect(page.locator('#page-feedback-form')).toBeHidden();
+  await expect(page.locator('#page-feedback-form')).toBeVisible();
   await expect(page.locator('#page-feedback-success')).toBeHidden();
   await expect(page.locator('#page-feedback-error')).toHaveText('Sorry, your feedback could not be submitted right now.');
+  await expect(page.locator('#page-feedback-submit')).toHaveText('Submit');
+  await expect(page.locator('#page-feedback-submit')).toBeEnabled();
 });
 
 test('submits feedback to the test endpoint and shows success', async ({ page }, testInfo) => {
   // End-to-end smoke check: submit a real payload, capture the request body,
   // and verify the important fields plus the success UI state.
   await loadWidget(page, widgetOptions);
+  await page.route(submitPathRoutePattern, async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: 'true' })
+    });
+  });
   await page.click('#feedback-useful-yes');
   await expect(page.locator('#page-feedback-details')).toBeVisible();
   const runnerIp = await getRunnerIp();
@@ -176,7 +185,7 @@ test('uses injected hidden franchise field when present', async ({ page }) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ ok: true })
+      body: JSON.stringify({ success: 'true' })
     });
   });
 
@@ -216,7 +225,7 @@ test('uses hostname overrides when franchise field is empty', async ({ page }) =
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ ok: true })
+        body: JSON.stringify({ success: 'true' })
       });
     });
 
@@ -250,7 +259,7 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ ok: true })
+      body: JSON.stringify({ success: 'true' })
     });
   });
 

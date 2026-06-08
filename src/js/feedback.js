@@ -94,6 +94,13 @@
         return window.location.pathname.split('/').filter(Boolean)[0] || '';
     }
 
+    function isSuccessfulResponsePayload(payload) {
+        return payload
+            && typeof payload === 'object'
+            && typeof payload.success === 'string'
+            && payload.success.toLowerCase() === 'true';
+    }
+
     const form = document.getElementById('page-feedback-form');
     const details = document.getElementById('page-feedback-details');
     const label = document.getElementById('pageFeedbackCommentLabel');
@@ -212,19 +219,30 @@
                             if (!response.ok) {
                                 throw new Error('Submission failed with status ' + response.status);
                             }
-                            form.hidden = true;
-                            success.hidden = false;
+
+                            return response.json().then(function (responsePayload) {
+                                if (!isSuccessfulResponsePayload(responsePayload)) {
+                                    throw new Error('Submission response did not return success="true"');
+                                }
+
+                                form.hidden = true;
+                                success.hidden = false;
+                            });
                         })
                         .catch(function (err) {
                             console.error('Feedback form submission error:', err);
-                            form.hidden = true;
+                            // Keep the form available so users can retry and get a fresh token.
+                            form.hidden = false;
+                            setButtonLoading(false);
                             error.hidden = false;
                             error.removeAttribute('hidden');
                         });
                 })
                 .catch(function (err) {
                     console.error('reCAPTCHA error:', err);
-                    form.hidden = true;
+                    // Keep the form visible so users can retry after token/script issues.
+                    form.hidden = false;
+                    setButtonLoading(false);
                     error.hidden = false;
                     error.removeAttribute('hidden');
                 });
