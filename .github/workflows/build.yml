@@ -20,19 +20,19 @@ on:
       - feature-test
       - development
     paths:
-      - 'src/**'
-      - 'tests/**'
-      - 'build.mjs'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/build.yml'
+      - "src/**"
+      - "tests/**"
+      - "build.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/build.yml"
   pull_request:
     branches:
       - uat
       - main
     paths:
-      - 'src/**'
-      - 'build.mjs'
+      - "src/**"
+      - "build.mjs"
 
 jobs:
   build:
@@ -43,19 +43,19 @@ jobs:
     env:
       DIST_SOURCE: dist
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      SMOKE_USE_REAL_RECAPTCHA: 'true'
-      PLAYWRIGHT_HEADLESS: 'true'
+      SMOKE_USE_REAL_RECAPTCHA: "true"
+      PLAYWRIGHT_HEADLESS: "true"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # required for worktree to access remote branches
+          fetch-depth: 0 # required for worktree to access remote branches
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: "24"
+          cache: "npm"
 
       - name: Resolve environment config
         id: config

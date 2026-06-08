@@ -126,6 +126,15 @@
     return window.location.pathname.split("/").filter(Boolean)[0] || "";
   }
 
+  function isSuccessfulResponsePayload(payload) {
+    return (
+      payload &&
+      typeof payload === "object" &&
+      typeof payload.success === "string" &&
+      payload.success.toLowerCase() === "true"
+    );
+  }
+
   const form = document.getElementById("page-feedback-form");
   const details = document.getElementById("page-feedback-details");
   const label = document.getElementById("pageFeedbackCommentLabel");
@@ -155,6 +164,7 @@
         console.error("reCAPTCHA preload error:", err);
       });
       details.hidden = false;
+      label.textContent = "Tell us why (optional)";
     });
   });
 
@@ -173,10 +183,7 @@
     loadRecaptcha()
       .then(function () {
         return new Promise(function (resolve, reject) {
-          if (
-            !window.grecaptcha ||
-            typeof window.grecaptcha.ready !== "function"
-          ) {
+          if (!window.grecaptcha || typeof window.grecaptcha.ready !== "function") {
             reject(new Error("reCAPTCHA is not available"));
             return;
           }
@@ -189,16 +196,10 @@
         });
       })
       .then(function (token) {
-        const satisfactionRadio = form.querySelector(
-          'input[name="feedback-satisfaction"]:checked',
-        );
-        const satisfactionValue = satisfactionRadio
-          ? satisfactionRadio.value
-          : "";
+        const satisfactionRadio = form.querySelector('input[name="feedback-satisfaction"]:checked');
+        const satisfactionValue = satisfactionRadio ? satisfactionRadio.value : "";
         const tzOffset = -new Date().getTimezoneOffset();
-        const commentsText = document
-          .getElementById("pageFeedbackComment")
-          .value.trim();
+        const commentsText = document.getElementById("pageFeedbackComment").value.trim();
         const franchise = resolveFranchise();
         setFieldValue("captchaCatch", BUILD_ENV);
         setFieldValue("g-recaptcha-response", token);
@@ -227,7 +228,7 @@
             submit: true,
           },
           metadata: {
-            timestamp: new Date().toISOString(),
+            datestamp: new Date().toISOString(),
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             offset: tzOffset,
             origin: window.location.origin,
@@ -241,30 +242,42 @@
           _vnote: "",
         };
 
-        fetch(form.action, {
-          method: form.method || "POST",
+        const submitUrl = new URL(form.action);
+        submitUrl.searchParams.set("g-recaptcha-response", token);
+
+        fetch(submitUrl.toString(), {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
           .then(function (response) {
             if (!response.ok) {
-              throw new Error(
-                "Submission failed with status " + response.status,
-              );
+              throw new Error("Submission failed with status " + response.status);
             }
-            form.hidden = true;
-            success.hidden = false;
+
+            return response.json().then(function (responsePayload) {
+              if (!isSuccessfulResponsePayload(responsePayload)) {
+                throw new Error('Submission response did not return success="true"');
+              }
+
+              form.hidden = true;
+              success.hidden = false;
+            });
           })
           .catch(function (err) {
             console.error("Feedback form submission error:", err);
-            form.hidden = true;
+            // Keep the form available so users can retry and get a fresh token.
+            form.hidden = false;
+            setButtonLoading(false);
             error.hidden = false;
             error.removeAttribute("hidden");
           });
       })
       .catch(function (err) {
         console.error("reCAPTCHA error:", err);
-        form.hidden = true;
+        // Keep the form visible so users can retry after token/script issues.
+        form.hidden = false;
+        setButtonLoading(false);
         error.hidden = false;
         error.removeAttribute("hidden");
       });
