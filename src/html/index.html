@@ -8,7 +8,6 @@
       visibility: hidden;
     }
   </style>
-  
   <div style="display: none" aria-hidden="true">
     <input type="text" name="captcha" tabindex="-1" autocomplete="off" value="" />
     <input type="text" name="feedback-captcha" tabindex="-1" autocomplete="off" value="" />
@@ -24,11 +23,11 @@
   <fieldset class="border-0 p-0 m-0">
     <legend class="visually-hidden">Was this page helpful?</legend>
 
-    <div class="d-flex align-items-center gap-5 flex-wrap">
-      <span class="qld-text-input-label mb-0"> Was this page helpful? </span>
+    <div class="d-flex align-items-center gap-24 gap-md-32 flex-wrap">
+      <span class="qld-text-input-label m-0"> Was this page helpful? </span>
 
-      <div class="d-flex align-items-center gap-4">
-        <div class="form-check form-check-inline mb-0">
+      <div class="d-flex align-items-center gap-2">
+        <div class="form-check form-check-inline my-0">
           <input
             class="form-check-input"
             type="radio"
@@ -37,12 +36,10 @@
             value="Satisfied (4)"
             required
           />
-          <label class="form-check-label" for="feedback-useful-yes">
-            Yes
-          </label>
+          <label class="form-check-label" for="feedback-useful-yes"> Yes </label>
         </div>
 
-        <div class="form-check form-check-inline mb-0">
+        <div class="form-check form-check-inline my-0">
           <input
             class="form-check-input"
             type="radio"
@@ -55,18 +52,13 @@
         </div>
       </div>
     </div>
-    <div id="page-feedback-details" class="mt-5" hidden>
-      <label
-        class="qld-text-input-label"
-        for="pageFeedbackComment"
-        id="pageFeedbackCommentLabel"
-      >
-        What worked well for you (optional)
+    <div id="page-feedback-details" class="mt-32 mt-md-48" hidden>
+      <label class="qld-text-input-label" for="pageFeedbackComment" id="pageFeedbackCommentLabel">
+        Tell us why (optional)
       </label>
 
       <span class="qld-hint-text d-block mt-3" id="pageFeedbackComment-hint">
-        Do not include any personal information. If you need a response, please
-        use our
+        Do not include any personal information. If you need a response, please use our
         <a href="/contact-us">contact us</a> page.
       </span>
 
@@ -78,7 +70,7 @@
         aria-describedby="pageFeedbackComment-hint"
       ></textarea>
 
-      <p class="mt-4 mb-0">
+      <p class="mt-16 mb-0 qld-hint-text">
         This site is protected by reCAPTCHA and the Google
         <a href="https://policies.google.com/privacy"> Privacy Policy </a>
         and
@@ -86,20 +78,14 @@
         apply.
       </p>
 
-      <button
-        type="submit"
-        id="page-feedback-submit"
-        class="btn btn-primary mt-5"
-      >
-        Submit
-      </button>
+      <div class="d-grid d-md-block mt-32">
+        <button type="submit" id="page-feedback-submit" class="btn btn-primary">Submit</button>
+      </div>
     </div>
   </fieldset>
 </form>
 
-<div id="page-feedback-success" hidden aria-live="polite">
-  Thank you for your feedback.
-</div>
+<div id="page-feedback-success" hidden aria-live="polite">Thank you for your feedback.</div>
 
 <div id="page-feedback-error" hidden aria-live="polite">
   Sorry, your feedback could not be submitted right now.

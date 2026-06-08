@@ -1,6 +1,6 @@
 // Shared smoke-test inputs, payload helpers, observability helpers, and widget bootstrapping.
 // Keeping them together makes the test harness easier to reuse from future specs.
-const makeText = parts => parts.join('');
+const makeText = (parts) => parts.join("");
 
 const smokeData = {
   pageTitle: makeText(['Feedback', ' widget', ' tests']),
@@ -12,15 +12,15 @@ const smokeData = {
 };
 
 function getBuildSource() {
-  return process.env.GITHUB_ACTIONS === 'true' ? 'github-actions' : 'local';
+  return process.env.GITHUB_ACTIONS === "true" ? "github-actions" : "local";
 }
 
 function getBuildMetaParts(runnerIp) {
-  const parts = ['\n\nsource=', getBuildSource()];
+  const parts = ["\n\nsource=", getBuildSource()];
   if (process.env.GITHUB_RUN_ID) {
-    parts.push('\nrun-id=', process.env.GITHUB_RUN_ID);
+    parts.push("\nrun-id=", process.env.GITHUB_RUN_ID);
   }
-  parts.push('\nrunner-ip=', runnerIp);
+  parts.push("\nrunner-ip=", runnerIp);
   return parts;
 }
 
@@ -29,7 +29,7 @@ function getSubmissionFeedback(runnerIp) {
 }
 
 async function getRunnerIp() {
-  const response = await fetch('https://api.ipify.org?format=json');
+  const response = await fetch("https://api.ipify.org?format=json");
   const data = await response.json();
   return data.ip;
 }
@@ -79,20 +79,20 @@ function getExpectedOS() {
 
 function getExpectedBrowserName(projectName) {
   if (/edge/i.test(projectName)) {
-    return 'Edge';
+    return "Edge";
   }
   if (/webkit|safari/i.test(projectName)) {
-    return 'Safari';
+    return "Safari";
   }
-  return 'Chrome';
+  return "Chrome";
 }
 
 function getExpectedOSForProject(projectName) {
   if (/win/i.test(projectName)) {
-    return 'Windows';
+    return "Windows";
   }
   if (/osx|mac|webkit|safari/i.test(projectName)) {
-    return 'Mac OS';
+    return "Mac OS";
   }
   return getExpectedOS();
 }
@@ -137,31 +137,35 @@ async function loadWidget(page, options = {}) {
     useRealRecaptcha,
   } = options;
 
-  await page.route(smokeData.pageUrl, async route => {
+  await page.route(smokeData.pageUrl, async (route) => {
     await route.fulfill({
-      contentType: 'text/html',
-      body: renderTestDocument(sourceHtml, smokeData)
+      contentType: "text/html",
+      body: renderTestDocument(sourceHtml, smokeData),
     });
   });
 
   await page.goto(smokeData.pageUrl, {
-    waitUntil: 'domcontentloaded',
-    referer: smokeData.referrer
+    waitUntil: "domcontentloaded",
+    referer: smokeData.referrer,
   });
 
   // Mode A: use real Google reCAPTCHA
   if (useRealRecaptcha) {
     if (!realRecaptchaSiteKey) {
-      throw new Error('SMOKE_RECAPTCHA_SITE_KEY is required when SMOKE_USE_REAL_RECAPTCHA=true');
+      throw new Error("SMOKE_RECAPTCHA_SITE_KEY is required when SMOKE_USE_REAL_RECAPTCHA=true");
     }
 
     await page.addScriptTag({
-      url: 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(realRecaptchaSiteKey)
+      url:
+        "https://www.google.com/recaptcha/api.js?render=" +
+        encodeURIComponent(realRecaptchaSiteKey),
     });
     await page.waitForFunction(() => {
-      return Boolean(window.grecaptcha)
-        && typeof window.grecaptcha.ready === 'function'
-        && typeof window.grecaptcha.execute === 'function';
+      return (
+        Boolean(window.grecaptcha) &&
+        typeof window.grecaptcha.ready === "function" &&
+        typeof window.grecaptcha.execute === "function"
+      );
     });
   } else if (simulateDelayedRecaptchaLoad) {
     // Mode B: emulate slow third-party script availability to regression-test
@@ -169,7 +173,11 @@ async function loadWidget(page, options = {}) {
     await page.evaluate(() => {
       const originalAppendChild = document.head.appendChild.bind(document.head);
       document.head.appendChild = function (node) {
-        if (node && node.tagName === 'SCRIPT' && /google\.com\/recaptcha\/api\.js/.test(node.src || '')) {
+        if (
+          node &&
+          node.tagName === "SCRIPT" &&
+          /google\.com\/recaptcha\/api\.js/.test(node.src || "")
+        ) {
           // Delay script readiness and manually fire onload the way the browser would.
           setTimeout(function () {
             window.grecaptcha = {
@@ -177,11 +185,11 @@ async function loadWidget(page, options = {}) {
                 cb();
               },
               execute() {
-                return Promise.resolve('delayed-test-token');
-              }
+                return Promise.resolve("delayed-test-token");
+              },
             };
 
-            if (typeof node.onload === 'function') {
+            if (typeof node.onload === "function") {
               node.onload();
             }
           }, 120);
@@ -198,8 +206,8 @@ async function loadWidget(page, options = {}) {
           cb();
         },
         execute() {
-          return Promise.resolve('test-token');
-        }
+          return Promise.resolve("test-token");
+        },
       };
     });
   }
