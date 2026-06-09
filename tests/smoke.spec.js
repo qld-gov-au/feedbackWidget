@@ -131,6 +131,36 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   await expect(page.locator('#page-feedback-submit')).toBeEnabled();
 });
 
+test('malformed JSON success response shows error banner', async ({ page }) => {
+  // Contract check: a 2xx response must contain valid JSON with success="true"
+  // before we show the success state.
+  await loadWidget(page, widgetOptions);
+  await page.route(submitPathRoutePattern, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: '{\n  "success" : "true",\n}',
+    });
+  });
+
+  await page.click('#feedback-useful-yes');
+  await expect(page.locator('#page-feedback-details')).toBeVisible();
+
+  const runnerIp = await getRunnerIp();
+  const feedback = getSubmissionFeedback(runnerIp);
+  await page.fill('#pageFeedbackComment', feedback);
+
+  await page.click('#page-feedback-submit');
+
+  await expect(page.locator('#page-feedback-form')).toBeVisible();
+  await expect(page.locator('#page-feedback-success')).toBeHidden();
+  await expect(page.locator('#page-feedback-error')).toHaveText(
+    'Sorry, your feedback could not be submitted right now.'
+  );
+  await expect(page.locator('#page-feedback-submit')).toHaveText('Submit');
+  await expect(page.locator('#page-feedback-submit')).toBeEnabled();
+});
+
 test('submits feedback to the test endpoint and shows success', async ({ page }, testInfo) => {
   // End-to-end smoke check: submit a real payload, capture the request body,
   // and verify the important fields plus the success UI state.

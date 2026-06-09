@@ -164,7 +164,6 @@
         console.error('reCAPTCHA preload error:', err);
       });
       details.hidden = false;
-      label.textContent = 'Tell us why (optional)';
     });
   });
 
@@ -255,7 +254,14 @@
               throw new Error('Submission failed with status ' + response.status);
             }
 
-            return response.json().then(function (responsePayload) {
+            return response.text().then(function (responseText) {
+              let responsePayload;
+              try {
+                responsePayload = JSON.parse(responseText);
+              } catch (parseError) {
+                throw new Error('Submission response was not valid JSON');
+              }
+
               if (!isSuccessfulResponsePayload(responsePayload)) {
                 throw new Error('Submission response did not return success="true"');
               }
