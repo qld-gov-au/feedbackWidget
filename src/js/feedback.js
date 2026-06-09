@@ -196,7 +196,7 @@
 
     if (typeof value === 'object' && !Array.isArray(value)) {
       Object.keys(value).forEach(function (childKey) {
-        appendObjectFields(params, prefix + '[' + childKey + ']', value[childKey]);
+        appendObjectFields(params, prefix + '.' + childKey, value[childKey]);
       });
       return;
     }

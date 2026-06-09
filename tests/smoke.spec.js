@@ -125,7 +125,7 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   const requestUrl = new URL(request.url());
 
   expect(requestUrl.searchParams.get('g-recaptcha-response')).toBeTruthy();
-  expect(formData.get('data[g-recaptcha-response]')).toBeTruthy();
+  expect(formData.get('data.g-recaptcha-response')).toBeTruthy();
 
   await expect(page.locator('#page-feedback-form')).toBeVisible();
   await expect(page.locator('#page-feedback-success')).toBeHidden();
@@ -251,7 +251,7 @@ test('submits feedback to the test endpoint and shows success', async ({ page },
   const runnerIp = await getRunnerIp();
   const feedback = getSubmissionFeedback(runnerIp);
   await page.fill('#pageFeedbackComment', feedback);
-  // Wait for the submission request and assert against JSON body content.
+  // Wait for the submission request and assert against form-data content.
   const requestPromise = page.waitForRequest(function (request) {
     return request.url().includes(submitPathFragment) && request.method() === 'POST';
   });
@@ -260,19 +260,17 @@ test('submits feedback to the test endpoint and shows success', async ({ page },
   const request = await requestPromise;
   const formData = parseRequestFormData(request);
 
-  expect(formData.get('data[page-title]')).toBe(smokeData.pageTitle);
-  expect(formData.get('data[page-url]')).toBe(smokeData.pageUrl);
-  expect(formData.get('data[page-referer]')).toBe(smokeData.referrer);
-  expect(formData.get('data[franchise]')).toBe('qld-gov-au');
-  expect(formData.get('data[feedback-satisfaction]')).toBe(smokeData.feedbackSatisfaction);
-  expect(formData.get('data[browserName][name]')).toBe(
-    getExpectedBrowserName(testInfo.project.name)
-  );
-  expect(formData.get('data[OS]')).toBe(getExpectedOSForProject(testInfo.project.name));
-  expect(formData.get('data[comments]')).toContain(smokeData.feedbackPrefix);
-  expect(formData.get('data[captchaCatch]')).toBe('dev');
-  expect(formData.get('data[feedback-captcha]')).toBe('');
-  expect(formData.get('data[g-recaptcha-response]')).toBeTruthy();
+  expect(formData.get('data.page-title')).toBe(smokeData.pageTitle);
+  expect(formData.get('data.page-url')).toBe(smokeData.pageUrl);
+  expect(formData.get('data.page-referer')).toBe(smokeData.referrer);
+  expect(formData.get('data.franchise')).toBe('qld-gov-au');
+  expect(formData.get('data.feedback-satisfaction')).toBe(smokeData.feedbackSatisfaction);
+  expect(formData.get('data.browserName.name')).toBe(getExpectedBrowserName(testInfo.project.name));
+  expect(formData.get('data.OS')).toBe(getExpectedOSForProject(testInfo.project.name));
+  expect(formData.get('data.comments')).toContain(smokeData.feedbackPrefix);
+  expect(formData.get('data.captchaCatch')).toBe('dev');
+  expect(formData.get('data.feedback-captcha')).toBe('');
+  expect(formData.get('data.g-recaptcha-response')).toBeTruthy();
 
   await expect(page.locator('#page-feedback-form')).toBeHidden();
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
@@ -309,9 +307,9 @@ test('uses injected hidden franchise field when present', async ({ page }) => {
   const request = await requestPromise;
   const formData = parseRequestFormData(request);
   logSmokeInfo(
-    `Franchise check (injected field): expected "${injectedFranchise}", got "${formData.get('data[franchise]')}"`
+    `Franchise check (injected field): expected "${injectedFranchise}", got "${formData.get('data.franchise')}"`
   );
-  expect(formData.get('data[franchise]')).toBe(injectedFranchise);
+  expect(formData.get('data.franchise')).toBe(injectedFranchise);
 });
 
 test('uses hostname overrides when franchise field is empty', async ({ page }) => {
@@ -355,9 +353,9 @@ test('uses hostname overrides when franchise field is empty', async ({ page }) =
     const request = await requestPromise;
     const formData = parseRequestFormData(request);
     logSmokeInfo(
-      `Franchise check (hostname override: ${new URL(franchiseCase.pageUrl).hostname}): expected "${franchiseCase.expected}", got "${formData.get('data[franchise]')}"`
+      `Franchise check (hostname override: ${new URL(franchiseCase.pageUrl).hostname}): expected "${franchiseCase.expected}", got "${formData.get('data.franchise')}"`
     );
-    expect(formData.get('data[franchise]')).toBe(franchiseCase.expected);
+    expect(formData.get('data.franchise')).toBe(franchiseCase.expected);
 
     await page.unroute(submitPathRoutePattern);
   }
@@ -391,7 +389,7 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
   const formData = parseRequestFormData(request);
   const requestUrl = new URL(request.url());
 
-  expect(formData.get('data[g-recaptcha-response]')).toBe('delayed-test-token');
+  expect(formData.get('data.g-recaptcha-response')).toBe('delayed-test-token');
   expect(requestUrl.searchParams.get('g-recaptcha-response')).toBe('delayed-test-token');
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
   await expect(page.locator('#page-feedback-error')).toBeHidden();

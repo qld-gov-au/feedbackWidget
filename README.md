@@ -86,7 +86,7 @@ Copy these two files into your CMS.
 
 1. On page load the widget is ready to collect page metadata directly from `document` and `window`
 2. The user selects Yes or No, optionally enters a comment, and submits
-3. The JS wraps all fields under a `data[...]` parent and posts to the Smart Service submissions endpoint as `application/json`
+3. The JS wraps all fields under a `data.` parent and posts to the Smart Service submissions endpoint as URL-encoded form data
 4. The server reads the submitted fields, checks for spam, and routes the email to the appropriate team based on URL, referrer, or franchise
 
 ## Smoke Tests
@@ -160,21 +160,21 @@ Notes:
 
 ## JavaScript (`src/js/feedback.js`)
 
-The script is wrapped in an IIFE and has no external dependencies beyond the Google reCAPTCHA v3 API. It reads page metadata directly from `document` and `window` when building the submission payload. The reCAPTCHA script is lazy-loaded the first time the user interacts with a Yes/No radio button, avoiding an unnecessary network request on pages where the form is never used. The comment label is static in HTML (`Tell us why (optional)`), while JS reveals the details section after a Yes/No selection. On submit the script validates the form natively via `checkValidity()`, disables the submit button to prevent double-submission, then calls `grecaptcha.execute()` to obtain a token. The token is sent both in payload (`data[g-recaptcha-response]`) and as a query parameter for server compatibility. Success requires both a `2xx` response and JSON body `{ success: "true" }`; on errors, the form remains visible, submit is re-enabled, and the error message is shown so users can retry. The `process.env.RECAPTCHA` and `process.env.BUILD_ENV` references are replaced with literal values at build time by esbuild, so no environment variables are present in the deployed output.
+The script is wrapped in an IIFE and has no external dependencies beyond the Google reCAPTCHA v3 API. It reads page metadata directly from `document` and `window` when building the submission payload. The reCAPTCHA script is lazy-loaded the first time the user interacts with a Yes/No radio button, avoiding an unnecessary network request on pages where the form is never used. The comment label is static in HTML (`Tell us why (optional)`), while JS reveals the details section after a Yes/No selection. On submit the script validates the form natively via `checkValidity()`, disables the submit button to prevent double-submission, then calls `grecaptcha.execute()` to obtain a token. The token is sent both in payload (`data.g-recaptcha-response`) and as a query parameter for server compatibility. Success requires a `2xx` response and either JSON body `{ success: "true" }` or a non-error HTML response; on errors, the form remains visible, submit is re-enabled, and the error message is shown so users can retry. The `process.env.RECAPTCHA` and `process.env.BUILD_ENV` references are replaced with literal values at build time by esbuild, so no environment variables are present in the deployed output.
 
 ## Payload shape
 
 ```
-data[page-title]=...
-data[page-url]=...
-data[page-referer]=...
-data[franchise]=...
-data[captchaCatch]=dev|prod
-data[captcha]=
-data[g-recaptcha-response]=<token>
-data[feedback-satisfaction]=Satisfied (4)|Dissatisfied (2)
-data[comments]=...
-data[feedback-captcha]=
+data.page-title=...
+data.page-url=...
+data.page-referer=...
+data.franchise=...
+data.captchaCatch=dev|prod
+data.captcha=
+data.g-recaptcha-response=<token>
+data.feedback-satisfaction=Satisfied (4)|Dissatisfied (2)
+data.comments=...
+data.feedback-captcha=
 ```
 
 ## Email routing logic
