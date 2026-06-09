@@ -16,6 +16,7 @@ name: Build and distribute
 on:
   push:
     branches:
+      - feature-test
       - development
     paths:
       - 'src/**'
