@@ -38,6 +38,10 @@ const widgetOptions = {
   useRealRecaptcha,
 };
 
+function parseRequestFormData(request) {
+  return new URLSearchParams(request.postData() || '');
+}
+
 test.afterEach(async ({}, testInfo) => {
   const browser = testInfo.project.name;
   const check = testInfo.title;
@@ -117,10 +121,11 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
 
   await page.click('#page-feedback-submit');
   const request = await requestPromise;
-  const payload = JSON.parse(request.postData());
+  const formData = parseRequestFormData(request);
   const requestUrl = new URL(request.url());
 
   expect(requestUrl.searchParams.get('g-recaptcha-response')).toBeTruthy();
+  expect(formData.get('data.g-recaptcha-response')).toBeTruthy();
 
   await expect(page.locator('#page-feedback-form')).toBeVisible();
   await expect(page.locator('#page-feedback-success')).toBeHidden();
@@ -129,6 +134,105 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   );
   await expect(page.locator('#page-feedback-submit')).toHaveText('Submit');
   await expect(page.locator('#page-feedback-submit')).toBeEnabled();
+});
+
+test('malformed JSON success response shows error banner', async ({ page }) => {
+  // Contract check: a 2xx response must contain valid JSON with success="true"
+  // before we show the success state.
+  await loadWidget(page, widgetOptions);
+  await page.route(submitPathRoutePattern, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: '{\n  "success" : "true",\n}',
+    });
+  });
+
+  await page.click('#feedback-useful-yes');
+  await expect(page.locator('#page-feedback-details')).toBeVisible();
+
+  const runnerIp = await getRunnerIp();
+  const feedback = getSubmissionFeedback(runnerIp);
+  await page.fill('#pageFeedbackComment', feedback);
+
+  await page.click('#page-feedback-submit');
+
+  await expect(page.locator('#page-feedback-form')).toBeVisible();
+  await expect(page.locator('#page-feedback-success')).toBeHidden();
+  await expect(page.locator('#page-feedback-error')).toHaveText(
+    'Sorry, your feedback could not be submitted right now.'
+  );
+  await expect(page.locator('#page-feedback-submit')).toHaveText('Submit');
+  await expect(page.locator('#page-feedback-submit')).toBeEnabled();
+});
+
+test('html error page response shows error banner', async ({ page }) => {
+  // Remote service can return an HTML error page even on a completed request.
+  await loadWidget(page, widgetOptions);
+  await page.route(submitPathRoutePattern, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: `<!DOCTYPE html>
+        <html lang="en">
+          <head><title>An error has occurred | Queensland Government</title></head>
+          <body>
+            <h1>An error has occurred</h1>
+            <div>Unable to continue</div>
+            <div>reCAPTCHA Failed, the action will now terminate and no email will be sent.</div>
+          </body>
+        </html>`,
+    });
+  });
+
+  await page.click('#feedback-useful-yes');
+  await expect(page.locator('#page-feedback-details')).toBeVisible();
+
+  const runnerIp = await getRunnerIp();
+  const feedback = getSubmissionFeedback(runnerIp);
+  await page.fill('#pageFeedbackComment', feedback);
+
+  await page.click('#page-feedback-submit');
+
+  await expect(page.locator('#page-feedback-form')).toBeVisible();
+  await expect(page.locator('#page-feedback-success')).toBeHidden();
+  await expect(page.locator('#page-feedback-error')).toHaveText(
+    'Sorry, your feedback could not be submitted right now.'
+  );
+  await expect(page.locator('#page-feedback-submit')).toHaveText('Submit');
+  await expect(page.locator('#page-feedback-submit')).toBeEnabled();
+});
+
+test('html success page response shows success banner', async ({ page }) => {
+  // Some environments respond with HTML rather than JSON on success.
+  await loadWidget(page, widgetOptions);
+  await page.route(submitPathRoutePattern, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: `<!DOCTYPE html>
+        <html lang="en">
+          <head><title>Feedback received | Queensland Government</title></head>
+          <body>
+            <h1>Feedback received</h1>
+            <p>Your feedback was submitted successfully.</p>
+          </body>
+        </html>`,
+    });
+  });
+
+  await page.click('#feedback-useful-yes');
+  await expect(page.locator('#page-feedback-details')).toBeVisible();
+
+  const runnerIp = await getRunnerIp();
+  const feedback = getSubmissionFeedback(runnerIp);
+  await page.fill('#pageFeedbackComment', feedback);
+
+  await page.click('#page-feedback-submit');
+
+  await expect(page.locator('#page-feedback-form')).toBeHidden();
+  await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
+  await expect(page.locator('#page-feedback-error')).toBeHidden();
 });
 
 test('submits feedback to the test endpoint and shows success', async ({ page }, testInfo) => {
@@ -147,26 +251,26 @@ test('submits feedback to the test endpoint and shows success', async ({ page },
   const runnerIp = await getRunnerIp();
   const feedback = getSubmissionFeedback(runnerIp);
   await page.fill('#pageFeedbackComment', feedback);
-  // Wait for the submission request and assert against JSON body content.
+  // Wait for the submission request and assert against form-data content.
   const requestPromise = page.waitForRequest(function (request) {
     return request.url().includes(submitPathFragment) && request.method() === 'POST';
   });
   await page.click('#page-feedback-submit');
 
   const request = await requestPromise;
-  const payload = JSON.parse(request.postData());
+  const formData = parseRequestFormData(request);
 
-  expect(payload.data['page-title']).toBe(smokeData.pageTitle);
-  expect(payload.data['page-url']).toBe(smokeData.pageUrl);
-  expect(payload.data['page-referer']).toBe(smokeData.referrer);
-  expect(payload.data['franchise']).toBe('qld-gov-au');
-  expect(payload.data['feedback-satisfaction']).toBe(smokeData.feedbackSatisfaction);
-  expect(payload.data.browserName.name).toBe(getExpectedBrowserName(testInfo.project.name));
-  expect(payload.data.OS).toBe(getExpectedOSForProject(testInfo.project.name));
-  expect(payload.data.comments).toContain(smokeData.feedbackPrefix);
-  expect(payload.data.captchaCatch).toBe('dev');
-  expect(payload.data['feedback-captcha']).toBe('');
-  expect(payload.data['g-recaptcha-response']).toBeTruthy();
+  expect(formData.get('data.page-title')).toBe(smokeData.pageTitle);
+  expect(formData.get('data.page-url')).toBe(smokeData.pageUrl);
+  expect(formData.get('data.page-referer')).toBe(smokeData.referrer);
+  expect(formData.get('data.franchise')).toBe('qld-gov-au');
+  expect(formData.get('data.feedback-satisfaction')).toBe(smokeData.feedbackSatisfaction);
+  expect(formData.get('data.browserName.name')).toBe(getExpectedBrowserName(testInfo.project.name));
+  expect(formData.get('data.OS')).toBe(getExpectedOSForProject(testInfo.project.name));
+  expect(formData.get('data.comments')).toContain(smokeData.feedbackPrefix);
+  expect(formData.get('data.captchaCatch')).toBe('dev');
+  expect(formData.get('data.feedback-captcha')).toBe('');
+  expect(formData.get('data.g-recaptcha-response')).toBeTruthy();
 
   await expect(page.locator('#page-feedback-form')).toBeHidden();
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
@@ -201,11 +305,11 @@ test('uses injected hidden franchise field when present', async ({ page }) => {
   await page.click('#page-feedback-submit');
 
   const request = await requestPromise;
-  const payload = JSON.parse(request.postData());
+  const formData = parseRequestFormData(request);
   logSmokeInfo(
-    `Franchise check (injected field): expected "${injectedFranchise}", got "${payload.data.franchise}"`
+    `Franchise check (injected field): expected "${injectedFranchise}", got "${formData.get('data.franchise')}"`
   );
-  expect(payload.data.franchise).toBe(injectedFranchise);
+  expect(formData.get('data.franchise')).toBe(injectedFranchise);
 });
 
 test('uses hostname overrides when franchise field is empty', async ({ page }) => {
@@ -247,11 +351,11 @@ test('uses hostname overrides when franchise field is empty', async ({ page }) =
     await page.click('#page-feedback-submit');
 
     const request = await requestPromise;
-    const payload = JSON.parse(request.postData());
+    const formData = parseRequestFormData(request);
     logSmokeInfo(
-      `Franchise check (hostname override: ${new URL(franchiseCase.pageUrl).hostname}): expected "${franchiseCase.expected}", got "${payload.data.franchise}"`
+      `Franchise check (hostname override: ${new URL(franchiseCase.pageUrl).hostname}): expected "${franchiseCase.expected}", got "${formData.get('data.franchise')}"`
     );
-    expect(payload.data.franchise).toBe(franchiseCase.expected);
+    expect(formData.get('data.franchise')).toBe(franchiseCase.expected);
 
     await page.unroute(submitPathRoutePattern);
   }
@@ -282,10 +386,10 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
 
   await page.click('#page-feedback-submit');
   const request = await requestPromise;
-  const payload = JSON.parse(request.postData());
+  const formData = parseRequestFormData(request);
   const requestUrl = new URL(request.url());
 
-  expect(payload.data['g-recaptcha-response']).toBe('delayed-test-token');
+  expect(formData.get('data.g-recaptcha-response')).toBe('delayed-test-token');
   expect(requestUrl.searchParams.get('g-recaptcha-response')).toBe('delayed-test-token');
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
   await expect(page.locator('#page-feedback-error')).toBeHidden();

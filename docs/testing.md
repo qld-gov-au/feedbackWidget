@@ -13,7 +13,7 @@ The smoke suite currently verifies:
 3. The comment label is static (`Tell us why (optional)`) and does not change across Yes/No interactions.
 4. Success and error banners are hidden on initial load.
 5. Failed submission path (forced `500`) keeps the form visible, shows the error banner, resets submit button state, and includes a `g-recaptcha-response` query param.
-6. Success submission path requires a `2xx` response with body `{ success: "true" }`, validates key payload fields, and shows success.
+6. Success submission path requires a `2xx` response, validates key form-data payload fields, and shows success for JSON `{ success: "true" }` or non-error HTML responses.
 7. Injected hidden franchise value is preserved in the outbound payload.
 8. Hostname franchise overrides are used when hidden franchise is empty.
 9. Delayed reCAPTCHA load still submits successfully (race-condition regression guard).
