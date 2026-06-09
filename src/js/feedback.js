@@ -135,6 +135,75 @@
     );
   }
 
+  function isKnownErrorHtmlResponse(responseText) {
+    const parser = new DOMParser();
+    const documentNode = parser.parseFromString(responseText, 'text/html');
+    const titleText = (documentNode.querySelector('title')?.textContent || '').toLowerCase();
+    const bodyText = (documentNode.body?.textContent || responseText)
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    const errorMarkers = [
+      'an error has occurred',
+      'unable to continue',
+      'recaptcha failed',
+      'no email will be sent',
+    ];
+
+    return errorMarkers.some(function (marker) {
+      return titleText.includes(marker) || bodyText.includes(marker);
+    });
+  }
+
+  function isSuccessfulSubmissionResponse(responseText, contentType) {
+    const trimmedResponse = responseText.trim();
+
+    if (!trimmedResponse) {
+      throw new Error('Submission response was empty');
+    }
+
+    try {
+      const responsePayload = JSON.parse(trimmedResponse);
+      if (!isSuccessfulResponsePayload(responsePayload)) {
+        throw new Error('Submission response did not return success="true"');
+      }
+      return true;
+    } catch (parseError) {
+      const looksLikeHtml =
+        (contentType || '').toLowerCase().includes('text/html') || trimmedResponse.startsWith('<');
+
+      if (!looksLikeHtml) {
+        throw new Error('Submission response was not valid JSON');
+      }
+
+      if (isKnownErrorHtmlResponse(trimmedResponse)) {
+        throw new Error('Submission response returned an HTML error page');
+      }
+
+      return true;
+    }
+  }
+
+  function appendFormField(params, key, value) {
+    params.append(key, value == null ? '' : String(value));
+  }
+
+  function appendObjectFields(params, prefix, value) {
+    if (value == null) {
+      appendFormField(params, prefix, '');
+      return;
+    }
+
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      Object.keys(value).forEach(function (childKey) {
+        appendObjectFields(params, prefix + '[' + childKey + ']', value[childKey]);
+      });
+      return;
+    }
+
+    appendFormField(params, prefix, value);
+  }
+
   const form = document.getElementById('page-feedback-form');
   const details = document.getElementById('page-feedback-details');
   const label = document.getElementById('pageFeedbackCommentLabel');
@@ -241,13 +310,18 @@
           _vnote: '',
         };
 
+        const formBody = new URLSearchParams();
+        appendObjectFields(formBody, 'data', payload.data);
+        appendObjectFields(formBody, 'metadata', payload.metadata);
+        appendFormField(formBody, 'state', payload.state);
+        appendFormField(formBody, '_vnote', payload._vnote);
+
         const submitUrl = new URL(form.action);
         submitUrl.searchParams.set('g-recaptcha-response', token);
 
         fetch(submitUrl.toString(), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: formBody,
         })
           .then(function (response) {
             if (!response.ok) {
@@ -255,16 +329,10 @@
             }
 
             return response.text().then(function (responseText) {
-              let responsePayload;
-              try {
-                responsePayload = JSON.parse(responseText);
-              } catch (parseError) {
-                throw new Error('Submission response was not valid JSON');
-              }
-
-              if (!isSuccessfulResponsePayload(responsePayload)) {
-                throw new Error('Submission response did not return success="true"');
-              }
+              isSuccessfulSubmissionResponse(
+                responseText,
+                response.headers.get('content-type') || ''
+              );
 
               form.hidden = true;
               success.hidden = false;
