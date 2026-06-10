@@ -343,6 +343,8 @@
             // Keep the form available so users can retry and get a fresh token.
             form.hidden = false;
             setButtonLoading(false);
+            error.innerHTML =
+              '<p>Something went wrong and your feedback was not submitted. Please try again.</p>';
             error.hidden = false;
             error.removeAttribute('hidden');
           });
@@ -352,6 +354,8 @@
         // Keep the form visible so users can retry after token/script issues.
         form.hidden = false;
         setButtonLoading(false);
+        error.innerHTML =
+          '<p>Something went wrong and your feedback was not submitted. Please try again.</p>';
         error.hidden = false;
         error.removeAttribute('hidden');
       });
