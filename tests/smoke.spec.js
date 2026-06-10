@@ -130,7 +130,7 @@ test('failed feedback submission shows the error banner', async ({ page }) => {
   await expect(page.locator('#page-feedback-form')).toBeVisible();
   await expect(page.locator('#page-feedback-success')).toBeHidden();
   await expect(page.locator('#page-feedback-error')).toHaveText(
-    'Sorry, your feedback could not be submitted right now.'
+    'Something went wrong and your feedback was not submitted. Please try again.'
   );
   await expect(page.locator('#page-feedback-submit')).toHaveText('Submit');
   await expect(page.locator('#page-feedback-submit')).toBeEnabled();
@@ -160,7 +160,7 @@ test('malformed JSON success response shows error banner', async ({ page }) => {
   await expect(page.locator('#page-feedback-form')).toBeVisible();
   await expect(page.locator('#page-feedback-success')).toBeHidden();
   await expect(page.locator('#page-feedback-error')).toHaveText(
-    'Sorry, your feedback could not be submitted right now.'
+    'Something went wrong and your feedback was not submitted. Please try again.'
   );
   await expect(page.locator('#page-feedback-submit')).toHaveText('Submit');
   await expect(page.locator('#page-feedback-submit')).toBeEnabled();
@@ -197,7 +197,7 @@ test('html error page response shows error banner', async ({ page }) => {
   await expect(page.locator('#page-feedback-form')).toBeVisible();
   await expect(page.locator('#page-feedback-success')).toBeHidden();
   await expect(page.locator('#page-feedback-error')).toHaveText(
-    'Sorry, your feedback could not be submitted right now.'
+    'Something went wrong and your feedback was not submitted. Please try again.'
   );
   await expect(page.locator('#page-feedback-submit')).toHaveText('Submit');
   await expect(page.locator('#page-feedback-submit')).toBeEnabled();
