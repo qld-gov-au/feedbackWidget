@@ -22,9 +22,6 @@ const {
 
 const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.html'), 'utf8');
 const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
-const useRealRecaptcha = process.env.SMOKE_USE_REAL_RECAPTCHA === 'true';
-const realRecaptchaSiteKey =
-  process.env.SMOKE_RECAPTCHA_SITE_KEY || process.env.RECAPTCHA_DEV || '';
 const fshProject = process.env.FSH_PROJECT;
 const fshEndpoint = process.env.FSH_ENDPOINT;
 const submitPathFragment = '/services/submissions/email/' + fshProject + '/' + fshEndpoint;
@@ -32,10 +29,8 @@ const submitPathRoutePattern = '**' + submitPathFragment + '**';
 
 const widgetOptions = {
   builtScriptPath,
-  realRecaptchaSiteKey,
   smokeData,
   sourceHtml,
-  useRealRecaptcha,
 };
 
 function parseRequestFormData(request) {
@@ -362,8 +357,6 @@ test('uses hostname overrides when franchise field is empty', async ({ page }) =
 });
 
 test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) => {
-  test.skip(useRealRecaptcha, 'Delayed reCAPTCHA simulation applies to mocked mode only.');
-
   // Regression guard for the grecaptcha undefined race:
   // submit should wait for the script-load promise before execute.
   await loadWidget(page, {
@@ -393,4 +386,18 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
   expect(requestUrl.searchParams.get('g-recaptcha-response')).toBe('delayed-test-token');
   await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
   await expect(page.locator('#page-feedback-error')).toBeHidden();
+});
+
+test('initializing reCAPTCHA keeps the widget-owned badge visible', async ({ page }) => {
+  await loadWidget(page, {
+    ...widgetOptions,
+    simulateDelayedRecaptchaLoad: true,
+  });
+
+  await page.click('#feedback-useful-yes');
+
+  const badge = page.locator('.grecaptcha-badge[data-feedback-widget-badge="true"]');
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveCSS('visibility', 'visible');
+  await expect(badge).toHaveCSS('opacity', '1');
 });

@@ -42,7 +42,6 @@ jobs:
     env:
       DIST_SOURCE: dist
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      SMOKE_USE_REAL_RECAPTCHA: 'true'
       PLAYWRIGHT_HEADLESS: 'true'
     steps:
       - name: Checkout repository
@@ -102,15 +101,17 @@ jobs:
 
       - name: Show smoke mode
         run: |
-          echo "SMOKE_USE_REAL_RECAPTCHA=${SMOKE_USE_REAL_RECAPTCHA}"
           echo "PLAYWRIGHT_HEADLESS=${PLAYWRIGHT_HEADLESS}"
 
       - name: Run smoke tests
         env:
-          SMOKE_USE_REAL_RECAPTCHA: ${{ env.SMOKE_USE_REAL_RECAPTCHA }}
-          SMOKE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_DEV }}
           PLAYWRIGHT_HEADLESS: ${{ env.PLAYWRIGHT_HEADLESS }}
-        run: npm test
+        run: npm run test:ci
+
+      - name: Run accessibility tests
+        env:
+          PLAYWRIGHT_HEADLESS: ${{ env.PLAYWRIGHT_HEADLESS }}
+        run: npm run test:a11y:ci
 
       - name: Push dist to ${{ steps.config.outputs.release_branch }}
         run: |

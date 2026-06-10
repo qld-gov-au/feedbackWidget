@@ -2,6 +2,21 @@
   const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA;
   const BUILD_ENV = process.env.BUILD_ENV;
   let recaptchaLoadPromise = null;
+  let recaptchaOwnedByWidget = false;
+  const existingBadgesAtInit = new Set(document.querySelectorAll('.grecaptcha-badge'));
+
+  function tagWidgetOwnedBadges() {
+    if (!recaptchaOwnedByWidget) {
+      return;
+    }
+
+    const badges = document.querySelectorAll('.grecaptcha-badge');
+    badges.forEach(function (badge) {
+      if (!existingBadgesAtInit.has(badge)) {
+        badge.setAttribute('data-feedback-widget-badge', 'true');
+      }
+    });
+  }
 
   function loadRecaptchaScript(url) {
     return new Promise(function (resolve, reject) {
@@ -35,9 +50,14 @@
       'https://www.recaptcha.net/recaptcha/api.js?render=' +
       encodeURIComponent(RECAPTCHA_SITE_KEY || '');
 
+    recaptchaOwnedByWidget = true;
+
     recaptchaLoadPromise = loadRecaptchaScript(primaryUrl)
       .catch(function () {
         return loadRecaptchaScript(fallbackUrl);
+      })
+      .then(function () {
+        tagWidgetOwnedBadges();
       })
       .catch(function () {
         throw new Error('Unable to load reCAPTCHA script from all known hosts');
@@ -227,6 +247,23 @@
     }
   }
 
+  function setRecaptchaBadgeVisible(visible) {
+    tagWidgetOwnedBadges();
+
+    const widgetBadges = document.querySelectorAll(
+      '.grecaptcha-badge[data-feedback-widget-badge="true"]'
+    );
+    if (widgetBadges.length === 0) {
+      return;
+    }
+
+    widgetBadges.forEach(function (badge) {
+      badge.style.visibility = visible ? 'visible' : 'hidden';
+      badge.style.opacity = visible ? '1' : '0';
+      badge.style.pointerEvents = visible ? 'auto' : 'none';
+    });
+  }
+
   radios.forEach(function (radio) {
     radio.addEventListener('change', function () {
       loadRecaptcha().catch(function (err) {
@@ -241,6 +278,7 @@
 
     error.hidden = true;
     success.hidden = true;
+    setRecaptchaBadgeVisible(true);
 
     if (!form.checkValidity()) {
       form.reportValidity();
@@ -264,6 +302,7 @@
         });
       })
       .then(function (token) {
+        tagWidgetOwnedBadges();
         const satisfactionRadio = form.querySelector('input[name="feedback-satisfaction"]:checked');
         const satisfactionValue = satisfactionRadio ? satisfactionRadio.value : '';
         const tzOffset = -new Date().getTimezoneOffset();
@@ -336,6 +375,7 @@
 
               form.hidden = true;
               success.hidden = false;
+              setRecaptchaBadgeVisible(false);
             });
           })
           .catch(function (err) {
@@ -343,8 +383,7 @@
             // Keep the form available so users can retry and get a fresh token.
             form.hidden = false;
             setButtonLoading(false);
-            error.textContent =
-              'Something went wrong and your feedback was not submitted. Please try again.';
+            setRecaptchaBadgeVisible(true);
             error.hidden = false;
             error.removeAttribute('hidden');
           });
@@ -354,8 +393,7 @@
         // Keep the form visible so users can retry after token/script issues.
         form.hidden = false;
         setButtonLoading(false);
-        error.textContent =
-          'Something went wrong and your feedback was not submitted. Please try again.';
+        setRecaptchaBadgeVisible(true);
         error.hidden = false;
         error.removeAttribute('hidden');
       });
