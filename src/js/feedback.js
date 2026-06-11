@@ -374,6 +374,7 @@
               );
 
               form.hidden = true;
+              success.textContent = 'Thank you for your feedback.';
               success.hidden = false;
               setRecaptchaBadgeVisible(false);
             });
@@ -384,6 +385,8 @@
             form.hidden = false;
             setButtonLoading(false);
             setRecaptchaBadgeVisible(true);
+            error.textContent =
+              'Something went wrong and your feedback was not submitted. Please try again.';
             error.hidden = false;
             error.removeAttribute('hidden');
           });
@@ -394,6 +397,8 @@
         form.hidden = false;
         setButtonLoading(false);
         setRecaptchaBadgeVisible(true);
+        error.textContent =
+          'Something went wrong and your feedback was not submitted. Please try again.';
         error.hidden = false;
         error.removeAttribute('hidden');
       });
