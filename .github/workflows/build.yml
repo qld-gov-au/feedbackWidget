@@ -77,9 +77,15 @@ jobs:
         env:
           FSH_PROJECT: ${{ vars.FSH_PROJECT }}
           FSH_ENDPOINT: ${{ vars.FSH_ENDPOINT }}
+          SMOKE_FSH_ENDPOINT: ${{ vars.SMOKE_FSH_ENDPOINT }}
         run: |
           if [[ -z "$FSH_PROJECT" || -z "$FSH_ENDPOINT" ]]; then
             echo "Error: repository variables FSH_PROJECT and FSH_ENDPOINT must be set."
+            exit 1
+          fi
+
+          if [[ -z "$SMOKE_FSH_ENDPOINT" ]]; then
+            echo "Error: repository variable SMOKE_FSH_ENDPOINT must be set to prevent smoke tests targeting a real endpoint."
             exit 1
           fi
 
@@ -87,6 +93,7 @@ jobs:
           echo "RECAPTCHA_PROD=${{ secrets.RECAPTCHA_PROD }}" >> .env
           echo "FSH_PROJECT=${FSH_PROJECT}" >> .env
           echo "FSH_ENDPOINT=${FSH_ENDPOINT}" >> .env
+          echo "SMOKE_FSH_ENDPOINT=${SMOKE_FSH_ENDPOINT}" >> .env
 
       - name: Build
         run: npm run build:${{ steps.config.outputs.build_env }}

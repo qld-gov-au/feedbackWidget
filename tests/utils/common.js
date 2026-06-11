@@ -99,7 +99,7 @@ function getExpectedOSForProject(projectName) {
 
 function renderTestDocument(sourceHtml, smokeData) {
   const fshProject = process.env.FSH_PROJECT;
-  const fshEndpoint = process.env.FSH_ENDPOINT;
+  const fshEndpoint = process.env.SMOKE_FSH_ENDPOINT;
 
   // Render the source fragment inside a minimal document so the widget runs
   // with the same markup as production, but with controlled test values.

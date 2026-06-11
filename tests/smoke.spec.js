@@ -23,7 +23,7 @@ const {
 const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.html'), 'utf8');
 const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
 const fshProject = process.env.FSH_PROJECT;
-const fshEndpoint = process.env.FSH_ENDPOINT;
+const fshEndpoint = process.env.SMOKE_FSH_ENDPOINT;
 const submitPathFragment = '/services/submissions/email/' + fshProject + '/' + fshEndpoint;
 const submitPathRoutePattern = '**' + submitPathFragment + '**';
 
