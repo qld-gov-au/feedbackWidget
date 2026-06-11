@@ -24,6 +24,7 @@ const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.ht
 const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
 const fshProject = process.env.FSH_PROJECT;
 const fshEndpoint = process.env.SMOKE_FSH_ENDPOINT;
+const expectedCaptchaCatch = process.env.TEST_BUILD_ENV === 'prod' ? 'prod' : 'dev';
 const submitPathFragment = '/services/submissions/email/' + fshProject + '/' + fshEndpoint;
 const submitPathRoutePattern = '**' + submitPathFragment + '**';
 
@@ -263,7 +264,7 @@ test('submits feedback to the test endpoint and shows success', async ({ page },
   expect(formData.get('data.browserName.name')).toBe(getExpectedBrowserName(testInfo.project.name));
   expect(formData.get('data.OS')).toBe(getExpectedOSForProject(testInfo.project.name));
   expect(formData.get('data.comments')).toContain(smokeData.feedbackPrefix);
-  expect(formData.get('data.captchaCatch')).toBe('dev');
+  expect(formData.get('data.captchaCatch')).toBe(expectedCaptchaCatch);
   expect(formData.get('data.feedback-captcha')).toBe('');
   expect(formData.get('data.g-recaptcha-response')).toBeTruthy();
 

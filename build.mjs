@@ -32,6 +32,7 @@ const endpointByBuildEnv = {
   prod: process.env.FSH_ENDPOINT_PROD,
 };
 const fshEndpoint = endpointByBuildEnv[env];
+const widgetBuildEnv = env === 'prod' ? 'prod' : 'dev';
 
 if (!fshEndpoint) {
   console.error(
@@ -53,7 +54,7 @@ await esbuild.build({
   minify: true,
   define: {
     'process.env.RECAPTCHA': JSON.stringify(recaptchaKey),
-    'process.env.BUILD_ENV': JSON.stringify(env),
+    'process.env.BUILD_ENV': JSON.stringify(widgetBuildEnv),
   },
   target: ['es2017'],
 });
