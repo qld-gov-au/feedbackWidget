@@ -25,11 +25,19 @@ This project pins Node via `.nvmrc`.
 # .env
 RECAPTCHA_DEV=<your reCAPTCHA v3 dev site key>
 RECAPTCHA_PROD=<your reCAPTCHA v3 prod site key>
-# optional submission path suffix: /services/submissions/email/{FSH_PROJECT}/{FSH_ENDPOINT}
+# submission path: /services/submissions/email/{FSH_PROJECT}/{selected endpoint}
 FSH_PROJECT=feedback
-FSH_ENDPOINT=feedback-v3-*
+FSH_ENDPOINT_DEV=<dev endpoint>
+FSH_ENDPOINT_UAT=<uat endpoint>
+FSH_ENDPOINT_PROD=<prod endpoint>
 PLAYWRIGHT_HEADLESS=true
 ```
+
+Build mode selects endpoint automatically:
+
+- `npm run build:dev` uses `FSH_ENDPOINT_DEV`
+- `npm run build:uat` uses `FSH_ENDPOINT_UAT`
+- `npm run build:prod` uses `FSH_ENDPOINT_PROD`
 
 > The `.env.sample` file lists all required keys. Never commit real keys.
 

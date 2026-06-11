@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build:dev": "node --env-file=.env build.mjs dev",
+    "build:uat": "node --env-file=.env build.mjs uat",
     "build:prod": "node --env-file=.env build.mjs prod",
     "pretest": "npm run build:dev",
     "pretest:a11y": "npm run build:dev",
