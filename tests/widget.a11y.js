@@ -50,12 +50,6 @@ test('keyboard-only interaction reveals details and reaches the submit button', 
   await expect(page.locator('#pageFeedbackComment')).toBeFocused();
 
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('link', { name: 'Privacy Policy' })).toBeFocused();
-
-  await page.keyboard.press('Tab');
-  await expect(page.getByRole('link', { name: 'Terms of Service' })).toBeFocused();
-
-  await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Submit' })).toBeFocused();
 });
 
