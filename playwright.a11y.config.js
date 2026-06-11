@@ -5,7 +5,7 @@ const isHeadless = headlessEnv === 'true';
 
 module.exports = defineConfig({
   testDir: './tests',
-  testMatch: '**/*.spec.js',
+  testMatch: '**/*.a11y.js',
   use: {
     headless: isHeadless,
   },
