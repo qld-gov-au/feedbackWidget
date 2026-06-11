@@ -16,8 +16,6 @@ name: Build and distribute
 on:
   push:
     branches:
-      - refractor/changes-to-testing-docs-recaptcha-visiblefields-a11y
-      - feature-test
       - development
     paths:
       - 'src/**'
