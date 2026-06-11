@@ -1,6 +1,6 @@
 {
   "name": "qld-feedback",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "private": true,
   "scripts": {
     "build:dev": "node --env-file=.env build.mjs dev",
