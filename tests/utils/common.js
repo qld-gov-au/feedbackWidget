@@ -99,7 +99,7 @@ function getExpectedOSForProject(projectName) {
 
 function renderTestDocument(sourceHtml, smokeData) {
   const fshProject = process.env.FSH_PROJECT;
-  const fshEndpoint = process.env.FSH_ENDPOINT;
+  const fshEndpoint = process.env.SMOKE_FSH_ENDPOINT;
 
   // Render the source fragment inside a minimal document so the widget runs
   // with the same markup as production, but with controlled test values.
@@ -127,14 +127,7 @@ function renderTestDocument(sourceHtml, smokeData) {
 }
 
 async function loadWidget(page, options = {}) {
-  const {
-    builtScriptPath,
-    realRecaptchaSiteKey,
-    simulateDelayedRecaptchaLoad,
-    smokeData,
-    sourceHtml,
-    useRealRecaptcha,
-  } = options;
+  const { builtScriptPath, simulateDelayedRecaptchaLoad, smokeData, sourceHtml } = options;
 
   await page.route(smokeData.pageUrl, async (route) => {
     await route.fulfill({
@@ -148,26 +141,8 @@ async function loadWidget(page, options = {}) {
     referer: smokeData.referrer,
   });
 
-  // Mode A: use real Google reCAPTCHA
-  if (useRealRecaptcha) {
-    if (!realRecaptchaSiteKey) {
-      throw new Error('SMOKE_RECAPTCHA_SITE_KEY is required when SMOKE_USE_REAL_RECAPTCHA=true');
-    }
-
-    await page.addScriptTag({
-      url:
-        'https://www.google.com/recaptcha/api.js?render=' +
-        encodeURIComponent(realRecaptchaSiteKey),
-    });
-    await page.waitForFunction(() => {
-      return (
-        Boolean(window.grecaptcha) &&
-        typeof window.grecaptcha.ready === 'function' &&
-        typeof window.grecaptcha.execute === 'function'
-      );
-    });
-  } else if (simulateDelayedRecaptchaLoad) {
-    // Mode B: emulate slow third-party script availability to regression-test
+  if (simulateDelayedRecaptchaLoad) {
+    // Mode A: emulate slow third-party script availability to regression-test
     // the submit flow's wait-for-load behavior.
     await page.evaluate(() => {
       const originalAppendChild = document.head.appendChild.bind(document.head);
@@ -179,6 +154,21 @@ async function loadWidget(page, options = {}) {
         ) {
           // Delay script readiness and manually fire onload the way the browser would.
           setTimeout(function () {
+            // Simulate Google's floating badge so visibility behavior can be smoke-tested.
+            if (!document.querySelector('.grecaptcha-badge')) {
+              const badge = document.createElement('div');
+              badge.className = 'grecaptcha-badge';
+              badge.style.position = 'fixed';
+              badge.style.right = '0';
+              badge.style.bottom = '0';
+              badge.style.width = '256px';
+              badge.style.height = '60px';
+              badge.style.visibility = 'visible';
+              badge.style.opacity = '1';
+              badge.style.pointerEvents = 'auto';
+              document.body.appendChild(badge);
+            }
+
             window.grecaptcha = {
               ready(cb) {
                 cb();
@@ -198,7 +188,7 @@ async function loadWidget(page, options = {}) {
       };
     });
   } else {
-    // Mode C (default): deterministic local smoke mode with mocked token.
+    // Mode B (default): deterministic local smoke mode with mocked token.
     await page.evaluate(() => {
       window.grecaptcha = {
         ready(cb) {

@@ -6,7 +6,7 @@ name: Build and distribute
 #
 # Environment branches:
 #   development  → PR  → dev build  → release-dev
-#   uat          → PR  → dev build  → release-uat
+#   uat          → PR  → uat build  → release-uat
 #   main         → PR  → prod build → release-production
 #
 # ── Team configuration ─────────────────────────────────────────────────────────
@@ -16,6 +16,7 @@ name: Build and distribute
 on:
   push:
     branches:
+      - refractor/changes-to-testing-docs-recaptcha-visiblefields-a11y
       - feature-test
       - development
     paths:
@@ -42,7 +43,6 @@ jobs:
     env:
       DIST_SOURCE: dist
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      SMOKE_USE_REAL_RECAPTCHA: 'true'
       PLAYWRIGHT_HEADLESS: 'true'
     steps:
       - name: Checkout repository
@@ -63,11 +63,11 @@ jobs:
           REF="${{ github.base_ref || github.ref_name }}"
           case "$REF" in
             main) echo "build_env=prod"  >> "$GITHUB_OUTPUT"
-                  echo "release_branch=release-production" >> "$GITHUB_OUTPUT" ;;
-            uat)  echo "build_env=dev"   >> "$GITHUB_OUTPUT"
-                  echo "release_branch=release-uat" >> "$GITHUB_OUTPUT" ;;
+              echo "release_branch=release-production" >> "$GITHUB_OUTPUT" ;;
+            uat)  echo "build_env=uat"   >> "$GITHUB_OUTPUT"
+              echo "release_branch=release-uat" >> "$GITHUB_OUTPUT" ;;
             *)    echo "build_env=dev"   >> "$GITHUB_OUTPUT"
-                  echo "release_branch=release-dev" >> "$GITHUB_OUTPUT" ;;
+              echo "release_branch=release-dev" >> "$GITHUB_OUTPUT" ;;
           esac
 
       - name: Install dependencies
@@ -76,17 +76,33 @@ jobs:
       - name: Create .env from secrets
         env:
           FSH_PROJECT: ${{ vars.FSH_PROJECT }}
-          FSH_ENDPOINT: ${{ vars.FSH_ENDPOINT }}
+          FSH_ENDPOINT_DEV: ${{ vars.FSH_ENDPOINT_DEV }}
+          FSH_ENDPOINT_UAT: ${{ vars.FSH_ENDPOINT_UAT }}
+          FSH_ENDPOINT_PROD: ${{ vars.FSH_ENDPOINT_PROD }}
+          SMOKE_FSH_ENDPOINT: ${{ vars.SMOKE_FSH_ENDPOINT }}
         run: |
-          if [[ -z "$FSH_PROJECT" || -z "$FSH_ENDPOINT" ]]; then
-            echo "Error: repository variables FSH_PROJECT and FSH_ENDPOINT must be set."
+          if [[ -z "$FSH_PROJECT" ]]; then
+            echo "Error: repository variable FSH_PROJECT must be set."
+            exit 1
+          fi
+
+          if [[ -z "$FSH_ENDPOINT_DEV" || -z "$FSH_ENDPOINT_UAT" || -z "$FSH_ENDPOINT_PROD" ]]; then
+            echo "Error: repository variables FSH_ENDPOINT_DEV, FSH_ENDPOINT_UAT, and FSH_ENDPOINT_PROD must be set."
+            exit 1
+          fi
+
+          if [[ -z "$SMOKE_FSH_ENDPOINT" ]]; then
+            echo "Error: repository variable SMOKE_FSH_ENDPOINT must be set to prevent smoke tests targeting a real endpoint."
             exit 1
           fi
 
           echo "RECAPTCHA_DEV=${{ secrets.RECAPTCHA_DEV }}" > .env
           echo "RECAPTCHA_PROD=${{ secrets.RECAPTCHA_PROD }}" >> .env
           echo "FSH_PROJECT=${FSH_PROJECT}" >> .env
-          echo "FSH_ENDPOINT=${FSH_ENDPOINT}" >> .env
+          echo "FSH_ENDPOINT_DEV=${FSH_ENDPOINT_DEV}" >> .env
+          echo "FSH_ENDPOINT_UAT=${FSH_ENDPOINT_UAT}" >> .env
+          echo "FSH_ENDPOINT_PROD=${FSH_ENDPOINT_PROD}" >> .env
+          echo "SMOKE_FSH_ENDPOINT=${SMOKE_FSH_ENDPOINT}" >> .env
 
       - name: Build
         run: npm run build:${{ steps.config.outputs.build_env }}
@@ -102,15 +118,17 @@ jobs:
 
       - name: Show smoke mode
         run: |
-          echo "SMOKE_USE_REAL_RECAPTCHA=${SMOKE_USE_REAL_RECAPTCHA}"
           echo "PLAYWRIGHT_HEADLESS=${PLAYWRIGHT_HEADLESS}"
 
       - name: Run smoke tests
         env:
-          SMOKE_USE_REAL_RECAPTCHA: ${{ env.SMOKE_USE_REAL_RECAPTCHA }}
-          SMOKE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_DEV }}
           PLAYWRIGHT_HEADLESS: ${{ env.PLAYWRIGHT_HEADLESS }}
-        run: npm test
+        run: npm run test:ci
+
+      - name: Run accessibility tests
+        env:
+          PLAYWRIGHT_HEADLESS: ${{ env.PLAYWRIGHT_HEADLESS }}
+        run: npm run test:a11y:ci
 
       - name: Push dist to ${{ steps.config.outputs.release_branch }}
         run: |
