@@ -271,6 +271,19 @@
       });
       details.hidden = false;
     });
+
+    radio.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' || !details.hidden) {
+        return;
+      }
+
+      event.preventDefault();
+      loadRecaptcha().catch(function (err) {
+        console.error('reCAPTCHA preload error:', err);
+      });
+      details.hidden = false;
+      document.getElementById('pageFeedbackComment').focus();
+    });
   });
 
   form.addEventListener('submit', function (event) {

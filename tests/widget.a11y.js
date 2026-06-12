@@ -53,6 +53,22 @@ test('keyboard-only interaction reveals details and reaches the submit button', 
   await expect(page.getByRole('button', { name: 'Submit' })).toBeFocused();
 });
 
+test('pressing Enter on the first radio reveals the details and submit button', async ({
+  page,
+}) => {
+  await loadWidget(page, widgetOptions);
+
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('radio', { name: 'Yes' })).toBeFocused();
+
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#page-feedback-details')).toBeVisible();
+  await expect(page.locator('#pageFeedbackComment')).toBeFocused();
+
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Submit' })).toBeFocused();
+});
+
 test('expanded widget exposes comment label and hint text', async ({ page }) => {
   await loadWidget(page, widgetOptions);
   await page.click('#feedback-useful-yes');
