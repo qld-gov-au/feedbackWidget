@@ -16,6 +16,7 @@ name: Build and distribute
 on:
   push:
     branches:
+      - improve-accessibility-controls
       - development
     paths:
       - 'src/**'
