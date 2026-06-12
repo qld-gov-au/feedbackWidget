@@ -16,7 +16,6 @@ name: Build and distribute
 on:
   push:
     branches:
-      - improve-accessibility-controls
       - development
     paths:
       - 'src/**'
@@ -27,6 +26,7 @@ on:
       - '.github/workflows/build.yml'
   pull_request:
     branches:
+      - development
       - uat
       - main
     paths:
