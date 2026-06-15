@@ -1,9 +1,35 @@
+# Environment and secrets
 .env
-src/ftl/*
+.env.*
+!.env.sample
+!.env.example
+.npmrc
+
+# Dependencies and build output
 node_modules/
 dist/
-*/.DS_Store
+
+# Test artifacts and reports
 test-results/
-# macOS metadata
+playwright-report/
+blob-report/
+coverage/
+
+# Logs and runtime files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor/OS artifacts
 .DS_Store
 **/.DS_Store
+*/.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Project-specific local/generated templates
+src/ftl/*

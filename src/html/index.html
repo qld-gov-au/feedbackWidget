@@ -1,118 +1,85 @@
 <form
-  action="https://__SMARTSERVICE_HOST__/services/submissions/email/feedback/feedback-v4"
+  action="https://__SMARTSERVICE_HOST__/services/submissions/email/__FSH_PROJECT__/__FSH_ENDPOINT__"
   method="post"
   id="page-feedback-form"
 >
-  <!-- Metadata fields populated by JS -->
-  <input type="hidden" name="data.page-title" id="data-page-title" />
-  <input type="hidden" name="data.page-url" id="data-page-url" />
-  <input type="hidden" name="data.page-referer" id="data-page-referer" />
-
-  <!-- Static environment fields -->
-  <input type="hidden" name="data.franchise" value="" />
-  <!-- Use "dev" for staging/test, "prod" for production -->
-  <input type="hidden" name="data.captchaCatch" value="__BUILD_ENV__" />
-
-  <!-- Honeypot fields: hidden from users, visible to bots -->
   <div style="display: none" aria-hidden="true">
-    <input
-      type="text"
-      name="data.captcha"
-      tabindex="-1"
-      autocomplete="off"
-      value=""
-    />
-    <input
-      type="text"
-      name="feedback-captcha"
-      tabindex="-1"
-      autocomplete="off"
-      value=""
-    />
+    <input type="text" name="captcha" tabindex="-1" autocomplete="off" value="" />
+    <input type="text" name="feedback-captcha" tabindex="-1" autocomplete="off" value="" />
+    <input type="text" name="feedback-a" tabindex="-1" autocomplete="off" value="" />
+    <input type="text" name="feedback-b" tabindex="-1" autocomplete="off" value="" />
+    <input type="text" name="feedback-c" tabindex="-1" autocomplete="off" value="" />
+    <input type="text" name="feedback-d" tabindex="-1" autocomplete="off" value="" />
+    <input type="text" name="dataset-owner" tabindex="-1" autocomplete="off" value="" />
+    <input type="text" name="franchise" tabindex="-1" autocomplete="off" value="" />
+    <input type="text" name="captchaCatch" tabindex="-1" autocomplete="off" value="" />
   </div>
 
   <fieldset class="border-0 p-0 m-0">
     <legend class="visually-hidden">Was this page helpful?</legend>
+    <div class="d-flex align-items-center gap-24 gap-md-32 flex-wrap">
+      <span class="qld-text-input-label m-0" aria-hidden="true"> Was this page helpful? </span>
 
-    <div class="d-flex align-items-center gap-5 flex-wrap">
-      <span class="qld-text-input-label mb-0"> Was this page helpful? </span>
-
-      <div class="d-flex align-items-center gap-4">
-        <div class="form-check form-check-inline mb-0">
+      <div class="d-flex align-items-center gap-2">
+        <div class="form-check form-check-inline my-0">
           <input
             class="form-check-input"
             type="radio"
-            name="data.useful"
+            name="feedback-satisfaction"
             id="feedback-useful-yes"
-            value="yes"
+            value="Satisfied (4)"
             required
           />
-          <label class="form-check-label" for="feedback-useful-yes">
-            Yes
-          </label>
+          <label class="form-check-label" for="feedback-useful-yes"> Yes </label>
         </div>
 
-        <div class="form-check form-check-inline mb-0">
+        <div class="form-check form-check-inline my-0">
           <input
             class="form-check-input"
             type="radio"
-            name="data.useful"
+            name="feedback-satisfaction"
             id="feedback-useful-no"
-            value="no"
+            value="Dissatisfied (2)"
             required
           />
           <label class="form-check-label" for="feedback-useful-no"> No </label>
         </div>
       </div>
     </div>
-    <div id="page-feedback-details" class="mt-5" hidden>
-      <label
-        class="qld-text-input-label"
-        for="pageFeedbackComment"
-        id="pageFeedbackCommentLabel"
-      >
-        What worked well for you (optional)
+    <div id="page-feedback-details" class="mt-32 mt-md-48" hidden>
+      <label class="qld-text-input-label" for="pageFeedbackComment" id="pageFeedbackCommentLabel">
+        Tell us why (optional)
       </label>
 
       <span class="qld-hint-text d-block mt-3" id="pageFeedbackComment-hint">
-        Do not include any personal information. If you need a response, please
-        use our
+        Do not include any personal information. If you need a response, please use our
         <a href="/contact-us">contact us</a> page.
       </span>
 
       <textarea
         id="pageFeedbackComment"
-        name="data.comments"
+        name="comments"
         class="form-control mt-4"
         rows="3"
         aria-describedby="pageFeedbackComment-hint"
       ></textarea>
 
-      <p class="mt-4 mb-0">
-        This site is protected by reCAPTCHA and the Google
-        <a href="https://policies.google.com/privacy"> Privacy Policy </a>
-        and
-        <a href="https://policies.google.com/terms"> Terms of Service </a>
-        apply.
-      </p>
+      <p class="mt-16 mb-0 qld-hint-text">This site is protected by reCAPTCHA.</p>
 
-      <button
-        type="submit"
-        id="page-feedback-submit"
-        class="btn btn-primary mt-5"
-      >
-        Submit
-      </button>
+      <div class="d-grid d-md-block mt-32">
+        <button type="submit" id="page-feedback-submit" class="btn btn-primary">Submit</button>
+      </div>
     </div>
   </fieldset>
 </form>
 
-<div id="page-feedback-success" hidden aria-live="polite">
-  Thank you for your feedback.
-</div>
+<div id="page-feedback-success" hidden aria-live="polite"></div>
 
-<div id="page-feedback-error" hidden aria-live="polite">
-  Sorry, your feedback could not be submitted right now.
-</div>
-
-<!-- reCAPTCHA v3 is loaded lazily by example.js on first radio interaction -->
+<div
+  id="page-feedback-error"
+  hidden
+  class="alert alert-error mt-32 mb-0"
+  role="alert"
+  aria-label="Error alert"
+  aria-live="assertive"
+></div>
