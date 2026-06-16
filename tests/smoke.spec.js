@@ -21,7 +21,7 @@ const {
 } = require('./utils/common');
 
 const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.html'), 'utf8');
-const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
+const builtScriptPath = path.resolve(__dirname, '../dist/feedback.dev.min.js');
 const fshProject = process.env.FSH_PROJECT;
 const fshEndpoint = process.env.SMOKE_FSH_ENDPOINT;
 const expectedCaptchaCatch = process.env.TEST_BUILD_ENV === 'prod' ? 'prod' : 'dev';

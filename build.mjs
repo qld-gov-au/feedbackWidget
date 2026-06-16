@@ -49,9 +49,10 @@ mkdirSync('dist', { recursive: true });
 // --- JS: bundle + minify, replace process.env.RECAPTCHA with the literal key ---
 await esbuild.build({
   entryPoints: ['src/js/feedback.js'],
-  outfile: 'dist/feedback.min.js',
+  outfile: `dist/feedback.${env}.min.js`,
   bundle: false,
   minify: true,
+  sourcemap: true,
   define: {
     'process.env.RECAPTCHA': JSON.stringify(recaptchaKey),
     'process.env.BUILD_ENV': JSON.stringify(widgetBuildEnv),
@@ -59,7 +60,7 @@ await esbuild.build({
   target: ['es2017'],
 });
 
-console.log('Built: dist/feedback.min.js');
+console.log(`Built: dist/feedback.${env}.min.js`);
 
 // --- HTML: minify + inject host and endpoint placeholders ---
 const rawHtml = readFileSync('src/html/index.html', 'utf8')
@@ -67,6 +68,6 @@ const rawHtml = readFileSync('src/html/index.html', 'utf8')
   .replace('__FSH_PROJECT__', fshProject)
   .replace('__FSH_ENDPOINT__', fshEndpoint);
 const minifiedHtml = minifyHtml(rawHtml);
-writeFileSync('dist/feedback.min.html', minifiedHtml);
-console.log('Built: dist/feedback.min.html');
-console.log('\nDone. Copy dist/feedback.min.js and dist/feedback.min.html into your CMS.');
+writeFileSync(`dist/feedback.${env}.min.html`, minifiedHtml);
+console.log(`Built: dist/feedback.${env}.min.html`);
+console.log(`\nDone. Copy dist/feedback.${env}.min.js and dist/feedback.${env}.min.html into your CMS.`);

@@ -5,7 +5,7 @@ const AxeBuilder = require('@axe-core/playwright').default;
 const { loadWidget, smokeData } = require('./utils/common');
 
 const sourceHtml = fs.readFileSync(path.resolve(__dirname, '../src/html/index.html'), 'utf8');
-const builtScriptPath = path.resolve(__dirname, '../dist/feedback.min.js');
+const builtScriptPath = path.resolve(__dirname, '../dist/feedback.dev.min.js');
 
 const widgetOptions = {
   builtScriptPath,

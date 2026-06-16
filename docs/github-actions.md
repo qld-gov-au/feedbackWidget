@@ -22,7 +22,7 @@ Each run:
 2. Runs `npm install`.
 3. Builds using the appropriate reCAPTCHA key from repository secrets (`RECAPTCHA_DEV` or `RECAPTCHA_PROD`).
 4. Injects endpoint path vars (`FSH_PROJECT` + `FSH_ENDPOINT_DEV/UAT/PROD`) and smoke test endpoint (`SMOKE_FSH_ENDPOINT`) from repository variables.
-5. Runs Playwright smoke tests against the source HTML fragment in `src/html/index.html` with the built `dist/feedback.min.js`, including a live success path and a forced failure-path assertion.
+5. Runs Playwright smoke tests against the source HTML fragment in `src/html/index.html` with the built `dist/feedback.${env}.min.js`, including a live success path and a forced failure-path assertion.
 6. Runs automated accessibility checks (`npm run test:a11y`) and fails the workflow if serious/critical Axe issues are found.
 7. Pushes only the `dist/` folder to the target release branch via a git worktree (skips the commit if nothing changed).
 

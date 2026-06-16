@@ -26,7 +26,7 @@ tests/
   smoke.spec.js                        — Playwright smoke tests
   widget.a11y.js                       — Axe + Playwright accessibility checks
   utils/common.js                      — Shared smoke/a11y test harness
-dist/                                  — Build output (`feedback.min.html`, `feedback.min.js`) (not committed)
+dist/                                  — Build output (`feedback.${env}.min.html`, `feedback.${env}.min.js`) (not committed)
 playwright.config.js                   — Default Playwright config (smoke)
 playwright.a11y.config.js              — Playwright config for accessibility suite
 playwright.browserstack.config.js      — Local-only BrowserStack config
