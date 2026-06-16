@@ -13,8 +13,8 @@
 
 Both commands output minified files to `dist/`:
 
-- `dist/feedback.min.js`
-- `dist/feedback.min.html`
+- `dist/feedback.${env}.min.js`
+- `dist/feedback.${env}.min.html`
 
 Copy these two files into your CMS.
 
