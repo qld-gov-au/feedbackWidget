@@ -3,7 +3,58 @@
   const BUILD_ENV = process.env.BUILD_ENV;
   let recaptchaLoadPromise = null;
   let recaptchaOwnedByWidget = false;
+  let iframeRecaptchaApi = null;
+  let iframeRecaptchaWindow = null;
+  let iframeRecaptchaFrame = null;
   const existingBadgesAtInit = new Set(document.querySelectorAll('.grecaptcha-badge'));
+
+  function parseRecaptchaRenderKey(src) {
+    if (!src || typeof src !== 'string') {
+      return '';
+    }
+
+    if (!/recaptcha\/api\.js/.test(src)) {
+      return '';
+    }
+
+    const keyMatch = src.match(/[?&]render=([^&]+)/);
+    if (!keyMatch || !keyMatch[1]) {
+      return '';
+    }
+
+    try {
+      return decodeURIComponent(keyMatch[1]);
+    } catch (_err) {
+      return keyMatch[1];
+    }
+  }
+
+  function getLoadedRecaptchaRenderKeys() {
+    const scripts = document.querySelectorAll('script[src]');
+    const keys = [];
+
+    scripts.forEach(function (script) {
+      const key = parseRecaptchaRenderKey(script.src || '');
+      if (key) {
+        keys.push(key);
+      }
+    });
+
+    return keys;
+  }
+
+  function hasConflictingGlobalRecaptcha() {
+    if (!window.grecaptcha || typeof window.grecaptcha.execute !== 'function') {
+      return false;
+    }
+
+    const loadedKeys = getLoadedRecaptchaRenderKeys();
+    if (loadedKeys.length === 0) {
+      return false;
+    }
+
+    return !loadedKeys.includes(RECAPTCHA_SITE_KEY);
+  }
 
   function tagWidgetOwnedBadges() {
     if (!recaptchaOwnedByWidget) {
@@ -34,12 +85,97 @@
     });
   }
 
+  function loadRecaptchaInIframeScript(iframeWindow, iframeDocument, url) {
+    return new Promise(function (resolve, reject) {
+      const script = iframeDocument.createElement('script');
+      script.src = url;
+      script.async = true;
+      script.defer = true;
+      script.onload = function () {
+        if (
+          iframeWindow.grecaptcha &&
+          typeof iframeWindow.grecaptcha.ready === 'function' &&
+          typeof iframeWindow.grecaptcha.execute === 'function'
+        ) {
+          resolve(iframeWindow.grecaptcha);
+          return;
+        }
+        reject(new Error('Iframe reCAPTCHA API did not initialize correctly'));
+      };
+      script.onerror = function () {
+        reject(new Error('Unable to load reCAPTCHA script in iframe: ' + url));
+      };
+      iframeDocument.head.appendChild(script);
+    });
+  }
+
+  function initIframeRecaptcha() {
+    if (iframeRecaptchaApi && iframeRecaptchaWindow) {
+      return Promise.resolve(iframeRecaptchaApi);
+    }
+
+    if (!iframeRecaptchaFrame) {
+      iframeRecaptchaFrame = document.createElement('iframe');
+      iframeRecaptchaFrame.setAttribute('title', 'feedback-recaptcha-context');
+      iframeRecaptchaFrame.setAttribute('aria-hidden', 'true');
+      iframeRecaptchaFrame.style.display = 'none';
+      document.body.appendChild(iframeRecaptchaFrame);
+    }
+
+    const frameWindow = iframeRecaptchaFrame.contentWindow;
+    const frameDocument = frameWindow && frameWindow.document;
+    if (!frameWindow || !frameDocument) {
+      return Promise.reject(new Error('Unable to initialize hidden iframe for reCAPTCHA'));
+    }
+
+    const primaryUrl =
+      'https://www.google.com/recaptcha/api.js?render=' +
+      encodeURIComponent(RECAPTCHA_SITE_KEY || '');
+    const fallbackUrl =
+      'https://www.recaptcha.net/recaptcha/api.js?render=' +
+      encodeURIComponent(RECAPTCHA_SITE_KEY || '');
+
+    return loadRecaptchaInIframeScript(frameWindow, frameDocument, primaryUrl)
+      .catch(function () {
+        return loadRecaptchaInIframeScript(frameWindow, frameDocument, fallbackUrl);
+      })
+      .then(function (api) {
+        iframeRecaptchaApi = api;
+        iframeRecaptchaWindow = frameWindow;
+        return api;
+      })
+      .catch(function () {
+        throw new Error('Unable to load isolated reCAPTCHA script from all known hosts');
+      });
+  }
+
+  function getActiveRecaptchaApi() {
+    if (iframeRecaptchaApi && iframeRecaptchaWindow) {
+      return { api: iframeRecaptchaApi, context: iframeRecaptchaWindow };
+    }
+
+    return { api: window.grecaptcha, context: window };
+  }
+
   function loadRecaptcha() {
-    if (window.grecaptcha && typeof window.grecaptcha.execute === 'function') {
+    if (
+      window.grecaptcha &&
+      typeof window.grecaptcha.execute === 'function' &&
+      !hasConflictingGlobalRecaptcha()
+    ) {
       return Promise.resolve();
     }
 
     if (recaptchaLoadPromise) {
+      return recaptchaLoadPromise;
+    }
+
+    if (hasConflictingGlobalRecaptcha()) {
+      recaptchaLoadPromise = initIframeRecaptcha().catch(function (err) {
+        recaptchaLoadPromise = null;
+        throw err;
+      });
+
       return recaptchaLoadPromise;
     }
 
@@ -302,15 +438,26 @@
     loadRecaptcha()
       .then(function () {
         return new Promise(function (resolve, reject) {
-          if (!window.grecaptcha || typeof window.grecaptcha.ready !== 'function') {
+          const activeRecaptcha = getActiveRecaptchaApi();
+          const api = activeRecaptcha.api;
+
+          if (!api || typeof api.ready !== 'function') {
             reject(new Error('reCAPTCHA is not available'));
             return;
           }
-          window.grecaptcha.ready(resolve);
+
+          api.ready(resolve);
         });
       })
       .then(function () {
-        return window.grecaptcha.execute(RECAPTCHA_SITE_KEY, {
+        const activeRecaptcha = getActiveRecaptchaApi();
+        const api = activeRecaptcha.api;
+
+        if (!api || typeof api.execute !== 'function') {
+          throw new Error('reCAPTCHA execute is not available');
+        }
+
+        return api.execute(RECAPTCHA_SITE_KEY, {
           action: 'feedback',
         });
       })

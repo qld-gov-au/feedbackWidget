@@ -389,6 +389,39 @@ test('submit waits for delayed reCAPTCHA load before posting', async ({ page }) 
   await expect(page.locator('#page-feedback-error')).toBeHidden();
 });
 
+test('submit succeeds when a conflicting global reCAPTCHA key is already loaded', async ({
+  page,
+}) => {
+  // Regression guard for Form.io-style global grecaptcha collisions.
+  await loadWidget(page, {
+    ...widgetOptions,
+    simulateRecaptchaKeyClash: true,
+  });
+  await page.route(submitPathRoutePattern, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: 'true' }),
+    });
+  });
+
+  await page.click('#feedback-useful-yes');
+
+  const requestPromise = page.waitForRequest(function (request) {
+    return request.url().includes(submitPathFragment) && request.method() === 'POST';
+  });
+
+  await page.click('#page-feedback-submit');
+  const request = await requestPromise;
+  const formData = parseRequestFormData(request);
+  const requestUrl = new URL(request.url());
+
+  expect(formData.get('data.g-recaptcha-response')).toBe('isolated-iframe-token');
+  expect(requestUrl.searchParams.get('g-recaptcha-response')).toBe('isolated-iframe-token');
+  await expect(page.locator('#page-feedback-success')).toHaveText('Thank you for your feedback.');
+  await expect(page.locator('#page-feedback-error')).toBeHidden();
+});
+
 test('initializing reCAPTCHA keeps the widget-owned badge visible', async ({ page }) => {
   await loadWidget(page, {
     ...widgetOptions,
