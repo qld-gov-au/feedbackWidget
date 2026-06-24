@@ -127,7 +127,13 @@ function renderTestDocument(sourceHtml, smokeData) {
 }
 
 async function loadWidget(page, options = {}) {
-  const { builtScriptPath, simulateDelayedRecaptchaLoad, smokeData, sourceHtml } = options;
+  const {
+    builtScriptPath,
+    simulateDelayedRecaptchaLoad,
+    simulateRecaptchaKeyClash,
+    smokeData,
+    sourceHtml,
+  } = options;
 
   await page.route(smokeData.pageUrl, async (route) => {
     await route.fulfill({
@@ -197,6 +203,75 @@ async function loadWidget(page, options = {}) {
         execute() {
           return Promise.resolve('test-token');
         },
+      };
+    });
+  }
+
+  if (simulateRecaptchaKeyClash) {
+    // Mode C: emulate another widget (for example Form.io) owning window.grecaptcha
+    // with a different render key, while allowing iframe-isolated execution to succeed.
+    await page.evaluate(() => {
+      const conflictingKey = 'formio-conflicting-test-key';
+      const conflictScript = document.createElement('script');
+      conflictScript.src =
+        'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(conflictingKey);
+      document.head.appendChild(conflictScript);
+
+      window.grecaptcha = {
+        ready(cb) {
+          cb();
+        },
+        execute(siteKey) {
+          if (siteKey !== conflictingKey) {
+            return Promise.reject(
+              new Error('Invalid site key or not loaded in api.js: ' + String(siteKey || ''))
+            );
+          }
+          return Promise.resolve('conflicting-global-token');
+        },
+      };
+
+      const originalBodyAppendChild = document.body.appendChild.bind(document.body);
+      document.body.appendChild = function (node) {
+        const appendedNode = originalBodyAppendChild(node);
+
+        if (node && node.tagName === 'IFRAME') {
+          const frameWindow = node.contentWindow;
+          const frameDocument = frameWindow && frameWindow.document;
+
+          if (frameDocument && frameDocument.head) {
+            const originalIframeHeadAppendChild = frameDocument.head.appendChild.bind(
+              frameDocument.head
+            );
+            frameDocument.head.appendChild = function (child) {
+              if (
+                child &&
+                child.tagName === 'SCRIPT' &&
+                /recaptcha\/api\.js/.test(child.src || '')
+              ) {
+                frameWindow.grecaptcha = {
+                  ready(cb) {
+                    cb();
+                  },
+                  execute() {
+                    return Promise.resolve('isolated-iframe-token');
+                  },
+                };
+
+                setTimeout(function () {
+                  if (typeof child.onload === 'function') {
+                    child.onload();
+                  }
+                }, 0);
+                return child;
+              }
+
+              return originalIframeHeadAppendChild(child);
+            };
+          }
+        }
+
+        return appendedNode;
       };
     });
   }
